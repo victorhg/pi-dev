@@ -97,7 +97,8 @@ export default function (pi: ExtensionAPI) {
 
         const ok = await ctx.ui.confirm("Next Task", `Start working on: ${nextTask.name}?`);
         if (ok) {
-          ctx.ui.notify(`Start working on the following task: ${nextTask.name}`, "info");
+          ctx.ui.notify(`Starting task: ${nextTask.name}`, "info");
+          pi.sendUserMessage(`Please search for the next task in Tasks.md and execute it: ${nextTask.name}`);
         } else {
           if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE);
         }
