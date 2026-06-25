@@ -1,15 +1,13 @@
-# Project Tasks
+[TASK]: Setup and Organization [DONE]
+ - Create `Agents.md` with mandatory instructions
+ - Initialize Git repository
+ - Create `Prd.md`
+ - Create `Tasks.md`
 
-## Phase 1: Setup and Organization
-- [x] Create `Agents.md` with mandatory instructions.
-- [x] Initialize Git repository.
-- [x] Create `Prd.md`.
-- [ ] Create `Tasks.md`.
+[TASK]: Extensions and Implementation [UNDONE]
+ - Define extension structure
+ - Implement first extension
 
-## Phase 2: Extensions and Implementation
-- [ ] Define extension structure.
-- [ ] Implement first extension.
-
-## Phase 3: Organization and Testing
-- [ ] Implement organization management.
-- [ ] Test all features.
+[TASK]: Organization and Testing [UNDONE]
+ - Implement organization management
+ - Test all features
