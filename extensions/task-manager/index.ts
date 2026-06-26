@@ -2,6 +2,7 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 import { Type } from "typebox";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { execSync } from "node:child_process";
 
 interface TaskState {
   name: string;
@@ -58,7 +59,7 @@ export default function (pi: ExtensionAPI) {
     }
     const entry = `| ${stat.name} | ${stat.duration} | ${stat.description} |\n`;
     if (!statsContent.includes("| Name |")) {
-      statsContent = "| Name | Duration | Description |\n| --- | --- | --- |\n" + entry + statsContent;
+      statsContent = "| Name | Duration | Description |\n| --- | --- | --- |\n" + entry;
     } else {
       statsContent = statsContent.replace("| Name | Duration | Description |\n| --- | --- | --- |\n", `| Name | Duration | Description |\n| --- | --- | --- |\n${entry}`);
     }
@@ -77,8 +78,7 @@ export default function (pi: ExtensionAPI) {
           table += `| ${t.name} | ${t.status} |\n`;
         });
         ctx.ui.notify("Task List", "info");
-        console.log(table); // Using console.log as a fallback for terminal output in TUI
-        // In a real TUI we might want a better way to display tables, but for now:
+        console.log(table);
         return { content: [{ type: "text", text: table }] };
       }
 
@@ -91,7 +91,6 @@ export default function (pi: ExtensionAPI) {
           return;
         }
 
-        // Save state
         if (!fs.existsSync(".pi")) fs.mkdirSync(".pi");
         fs.writeFileSync(STATE_FILE, JSON.stringify({ name: nextTask.name, startTime: Date.now() }));
 
@@ -114,7 +113,56 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text", text: stats }] };
       }
 
-      ctx.ui.notify("Invalid subcommand. Use: list, next, status", "error");
+      if (subcommand === "run-loop") {
+        const commandArg = args.slice(7).trim();
+        if (!commandArg) {
+          ctx.ui.notify("Missing command for loop. Usage: /task run-loop <command>", "error");
+          return;
+        }
+
+        ctx.ui.notify("Running loop...", "info");
+        try {
+          const loopScript = `
+            MAX_ITERATIONS=10
+            iteration=1
+            while [ $iteration -le $MAX_ITERATIONS ]; do
+              echo "🔄 Turn $iteration/$MAX_ITERATIONS"
+              ${commandArg}
+              if [ $? -eq 0 ]; then
+                 echo "✅ Command successful."
+                 exit 0
+              fi
+              iteration=$((iteration + 1))
+              sleep 1
+            done
+            echo "⚠️ Reached max iterations."
+            exit 1
+          `;
+          const result = execSync(`bash -c '${loopScript}'`, { encoding: 'utf8' });
+          return { content: [{ type: "text", text: result }] };
+        } catch (e: any) {
+          return { content: [{ type: "text", text: `Loop error: ${e.message}` }] };
+        }
+      }
+
+      if (subcommand === "run-docker") {
+        const commandArg = args.slice(13).trim();
+        if (!commandArg) {
+          ctx.ui.notify("Missing command for docker. Usage: /task run-docker <command>", "error");
+          return;
+        }
+
+        ctx.ui.notify("Running in Docker...", "info");
+        try {
+          const dockerCmd = `docker run --rm -v "$(pwd)":/work -w /work node:20-slim /bin/bash -c "${commandArg}"`;
+          const result = execSync(dockerCmd, { encoding: 'utf8' });
+          return { content: [{ type: "text", text: result }] };
+        } catch (e: any) {
+          return { content: [{ type: "text", text: `Docker error: ${e.message}` }] };
+        }
+      }
+
+      ctx.ui.notify("Invalid subcommand. Use: list, next, status, run-loop, run-docker", "error");
     },
   });
 
@@ -149,7 +197,6 @@ export default function (pi: ExtensionAPI) {
       const durationMs = endTime - state.startTime;
       const durationStr = `${Math.round(durationMs / 1000)}s`;
 
-      // 1. Update Tasks.md
       const updated = updateTaskStatus(params.taskName, "DONE");
       if (!updated) {
         return {
@@ -158,14 +205,12 @@ export default function (pi: ExtensionAPI) {
         };
       }
 
-      // 2. Save Stats
       saveStat({
         name: params.taskName,
         duration: durationStr,
         description: params.description,
       });
 
-      // 3. Cleanup state
       fs.unlinkSync(statePath);
 
       return {
