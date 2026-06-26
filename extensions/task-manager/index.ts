@@ -114,30 +114,60 @@ export default function (pi: ExtensionAPI) {
       }
 
       if (subcommand === "run-loop") {
-        const commandArg = args.slice(7).trim();
+        let commandArg = args.slice(7).trim(); // skip "/task run-loop "
         if (!commandArg) {
-          ctx.ui.notify("Missing command for loop. Usage: /task run-loop <command>", "error");
+          ctx.ui.notify("Missing command for loop. Usage: /task run-loop <count> <command> or /task run-loop <command>", "error");
           return;
         }
 
-        ctx.ui.notify("Running loop...", "info");
+        let count = 10;
+        let command = commandArg;
+
+        // 1. Match: "execute the next X tasks"
+        const taskLoopMatch = commandArg.match(/execute the next (\d+) tasks/i);
+        if (taskLoopMatch) {
+          count = parseInt(taskLoopMatch[1]);
+          command = "TASK_LOOP_ITERATION_START";
+        } else {
+          // 2. Match: "<count> <command>" (e.g. "3 npm test")
+          const firstSpaceIndex = commandArg.indexOf(" ");
+          if (firstSpaceIndex !== -1) {
+            const firstPart = commandArg.substring(0, firstSpaceIndex);
+            const rest = commandArg.substring(firstSpaceIndex + 1).trim();
+            if (/^\d+$/.test(firstPart)) {
+              count = parseInt(firstPart);
+              command = rest;
+            }
+          }
+        }
+
+        ctx.ui.notify(`Running loop (${count} iterations)...`, "info");
         try {
-          const loopScript = `
-            MAX_ITERATIONS=10
-            iteration=1
-            while [ $iteration -le $MAX_ITERATIONS ]; do
-              echo "🔄 Turn $iteration/$MAX_ITERATIONS"
-              ${commandArg}
-              if [ $? -eq 0 ]; then
-                 echo "✅ Command successful."
-                 exit 0
-              fi
-              iteration=$((iteration + 1))
-              sleep 1
-            done
-            echo "⚠️ Reached max iterations."
-            exit 1
-          `;
+          let loopScript = "";
+          if (command === "TASK_LOOP_ITERATION_START") {
+            loopScript = `
+              for i in \$(seq 1 $count); do
+                echo "🔄 Task Loop Turn $i/$count"
+                echo "TASK_LOOP_ITERATION_START"
+                sleep 1
+              done
+            `;
+          } else {
+            loopScript = `
+              for i in \$(seq 1 $count); do
+                echo "🔄 Turn $i/$count"
+                ${command}
+                if [ $? -eq 0 ]; then
+                  echo "✅ Command successful."
+                  exit 0
+                fi
+                sleep 1
+              done
+              echo "⚠️ Reached max iterations."
+              exit 1
+            `;
+          }
+
           const result = execSync(`bash -c '${loopScript}'`, { encoding: 'utf8' });
           return { content: [{ type: "text", text: result }] };
         } catch (e: any) {
