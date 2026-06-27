@@ -1,5 +1,5 @@
 ---
-name: system_info
+name: system-info
 description: Collects detailed information about the current system environment, including OS, Python, Node.js, and disk usage. Use this when you need to diagnose environment-related errors or verify installation details.
 ---
 
