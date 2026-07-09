@@ -2,6 +2,15 @@
 
 A curated distribution of the Pi coding agent, including custom skills, packages, and workflow automation.
 
+## Why this distribution?
+
+Pi is a powerful coding assistant, but managing agent behavior, themes, and extensions across projects can become complex. This distribution provides:
+
+- **Standardized Skills**: A set of `.agents/` definitions to ensure consistent behavior across all your development tasks.
+- **Curated Assets**: Ready-to-use packages like `@victorhg/pi-themes` to style your terminal experience.
+- **Workflow Governance**: Documented processes to ensure maintainability, validation, and release quality.
+- **Extensibility**: A structured monorepo environment designed for building and testing your own Pi extensions.
+
 ## Installation
 
 To install this distribution's themes:
@@ -9,6 +18,16 @@ To install this distribution's themes:
 ```bash
 pi install npm:@victorhg/pi-themes
 ```
+
+## Contributing
+
+We welcome contributions! Please follow the guidance in our [AGENTS.md](AGENTS.md) to understand how to work with our custom skills and maintain the project's quality standards.
+
+### Validation
+Before submitting changes, ensure you validate your work:
+- Inspect `git diff`.
+- Run package tests.
+- Validate skill metadata: `pnpx check-skills validate .agents --recursive --json`
 
 ## Skills
 
@@ -19,8 +38,12 @@ Skills are located in the `.agents/` directory and are used to govern agent beha
 - **pi-primitive-check**: Used to evaluate customisation work against built-in Pi primitives before implementation.
 - **pi-release-workflow**: Used when preparing or validating monorepo releases.
 - **pi-validation-flow**: Used to validate repository changes before finalizing implementation.
+- **system-info**: Used to provide contextual information about the environment.
 
 ## Inspiration
 
 This project draws inspiration from [my-pi by spences10](https://github.com/spences10/my-pi/tree/main), which provides a foundation for curated Pi distributions.
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
