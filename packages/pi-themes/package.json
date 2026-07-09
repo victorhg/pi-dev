@@ -1,0 +1,24 @@
+{
+  "name": "@victorhg/pi-themes",
+  "version": "1.0.0",
+  "description": "A collection of themes and styling components for Pi.",
+  "main": "index.js",
+  "module": "index.esm.js",
+  "scripts": {
+    "build": "echo 'Simulating build process for themes...'",
+    "test": "echo 'No tests configured for themes yet.'"
+  },
+  "keywords": [
+    "pi",
+    "themes",
+    "styling"
+  ],
+  "author": "Victor Hugo Germano",
+  "license": "ISC",
+  "dependencies": {
+    "pi-core": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
