@@ -1,7 +1,0 @@
-{
-  "name": "pi-task-manager",
-  "version": "1.0.0",
-  "description": "Pi extension for managing tasks via Tasks.md",
-  "dependencies": {
-  }
-}
