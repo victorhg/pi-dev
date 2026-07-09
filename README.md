@@ -2,6 +2,14 @@
 
 A curated distribution of the Pi coding agent, including custom skills, packages, and workflow automation.
 
+## Installation
+
+To install this distribution's themes:
+
+```bash
+pi install npm:@victorhg/pi-themes
+```
+
 ## Skills
 
 Skills are located in the `.agents/` directory and are used to govern agent behavior for specific tasks.
