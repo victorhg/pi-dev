@@ -28,7 +28,7 @@ repo.
 
 ## Project conventions
 
-- Prefer `@spences10/pi-*` workspace packages with `workspace:*`
+- Prefer `@victorhg/pi-*` workspace packages with `workspace:*`
   links.
 - Tests live beside source as `*.test.ts` and should cover
   trigger/gating helpers.

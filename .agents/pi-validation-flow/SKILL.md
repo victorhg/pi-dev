@@ -22,7 +22,7 @@ Use this before saying implementation work is done.
 
 ## Command selection
 
-- Single package: `pnpm --filter @spences10/<pkg> run check:self` and
+- Single package: `pnpm --filter @victorhg/<pkg> run check:self` and
   `test:self`.
 - Root/shared changes: `pnpm run check`.
 - Boundary-sensitive changes: `pnpm run check:boundaries` if available

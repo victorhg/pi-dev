@@ -3,7 +3,7 @@ name: pi-observability-local-dev
 # prettier-ignore
 description: Use when developing or reviewing packages/pi-observability dashboard/server changes locally, especially rebuilding dist, restarting the 43190 server, validating UI behavior, or keeping the local dashboard in sync with source edits.
 compatibility:
-  Requires the my-pi monorepo and @spences10/pi-observability package.
+  Requires the my-pi monorepo and @victorhg/pi-observability package.
 ---
 
 # Pi Observability Local Development
@@ -18,14 +18,14 @@ the local dashboard at `http://127.0.0.1:43190`.
 2. Validate focused changes first:
 
    ```bash
-   pnpm --filter @spences10/pi-observability run check:self
-   pnpm --filter @spences10/pi-observability run test:self
+   pnpm --filter @victorhg/pi-observability run check:self
+   pnpm --filter @victorhg/pi-observability run test:self
    ```
 
 3. Rebuild the local dashboard/server output:
 
    ```bash
-   pnpm --filter @spences10/pi-observability run build:self
+   pnpm --filter @victorhg/pi-observability run build:self
    ```
 
 4. Restart the server bound to port `43190`:
