@@ -13,10 +13,20 @@ Pi is a powerful coding assistant, but managing agent behavior, themes, and exte
 
 ## Installation
 
-To install this distribution's themes:
+This repository provides several packages that can be installed into your Pi environment.
+
+### Themes
+To install the curated themes and styling assets:
 
 ```bash
 pi install npm:@victorhg/pi-themes
+```
+
+### Session Management
+To install the session management extension:
+
+```bash
+pi install npm:@victorhg/pi-last-session
 ```
 
 ## Contributing
