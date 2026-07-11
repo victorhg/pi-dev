@@ -1,0 +1,5 @@
+{
+	"dependencies": {
+		"@victorhg/pi-themes": "workspace:*"
+	}
+}
