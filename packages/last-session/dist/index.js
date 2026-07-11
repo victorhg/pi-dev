@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { generateSummary, sessionEntryToContextMessages } from '@earendil-works/pi-coding-agent';
 // Define the path to the session file relative to the project root
 const SESSION_FILE = path.join(process.cwd(), '.last-session');
 /**
@@ -66,11 +67,37 @@ export async function saveSession(summary, lastKnownFile = null) {
     }
 }
 /**
- * Placeholder for generating a compact session summary.
+ * Generates a compact session summary using the active model if available,
+ * falling back to a placeholder if no model is active or accessible.
  */
-export async function compactSession() {
-    console.log('Compacting session... (using placeholder logic)');
-    return "This is a placeholder summary of the current work context. Full state capture requires Pi agent introspection.";
+export async function compactSession(ctx) {
+    const model = ctx.model;
+    if (!model) {
+        console.warn('No active model in context to generate session summary. Using placeholder.');
+        return "This is a placeholder summary of the current work context. Full state capture requires Pi agent introspection.";
+    }
+    const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
+    if (!auth || !auth.ok || !auth.apiKey) {
+        console.warn('No API key available for current model to generate session summary. Using placeholder.');
+        return "This is a placeholder summary of the current work context. Full state capture requires Pi agent introspection.";
+    }
+    try {
+        const branch = ctx.sessionManager.getBranch();
+        const currentMessages = branch.flatMap(sessionEntryToContextMessages);
+        if (currentMessages.length === 0) {
+            return "Empty session history.";
+        }
+        const summary = await generateSummary(currentMessages, model, model.maxTokens > 0 ? model.maxTokens : 16384, auth.apiKey, auth.headers, ctx.signal, undefined, // customInstructions
+        undefined, // previousSummary
+        undefined, // thinkingLevel
+        undefined, // streamFn
+        auth.env);
+        return summary;
+    }
+    catch (error) {
+        console.error('Error generating session summary with model:', error);
+        return "This is a placeholder summary of the current work context. Full state capture requires Pi agent introspection.";
+    }
 }
 /**
  * Default export registering commands with the Pi Agent API.
@@ -92,7 +119,7 @@ export default function (pi) {
         description: "Save current session, start new, and restore context",
         handler: async (args, ctx) => {
             ctx.ui.notify("Saving current context...", "info");
-            const summary = await compactSession();
+            const summary = await compactSession(ctx);
             const currentFile = getLastKnownFile(ctx);
             await saveSession(summary, currentFile);
             ctx.ui.notify("Starting fresh session with restored context...", "info");
