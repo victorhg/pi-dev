@@ -70,7 +70,7 @@ export async function saveSession(summary, lastKnownFile = null) {
  * Generates a compact session summary using the active model if available,
  * falling back to a placeholder if no model is active or accessible.
  */
-export async function compactSession(ctx) {
+export async function compactSession(ctx, customInstructions) {
     const model = ctx.model;
     if (!model) {
         console.warn('No active model in context to generate session summary. Using placeholder.');
@@ -87,7 +87,7 @@ export async function compactSession(ctx) {
         if (currentMessages.length === 0) {
             return "Empty session history.";
         }
-        const summary = await generateSummary(currentMessages, model, model.maxTokens > 0 ? model.maxTokens : 16384, auth.apiKey, auth.headers, ctx.signal, undefined, // customInstructions
+        const summary = await generateSummary(currentMessages, model, model.maxTokens > 0 ? model.maxTokens : 16384, auth.apiKey, auth.headers, ctx.signal, customInstructions, // customInstructions
         undefined, // previousSummary
         undefined, // thinkingLevel
         undefined, // streamFn
@@ -109,7 +109,7 @@ export default function (pi) {
         handler: async (args, ctx) => {
             ctx.ui.notify("Saving session...", "info");
             const currentFile = getLastKnownFile(ctx);
-            const summary = args || "User initiated session save command.";
+            const summary = await compactSession(ctx, args);
             await saveSession(summary, currentFile);
             ctx.ui.notify("✅ Session successfully saved!", "info");
         }
@@ -119,7 +119,7 @@ export default function (pi) {
         description: "Save current session, start new, and restore context",
         handler: async (args, ctx) => {
             ctx.ui.notify("Saving current context...", "info");
-            const summary = await compactSession(ctx);
+            const summary = await compactSession(ctx, args);
             const currentFile = getLastKnownFile(ctx);
             await saveSession(summary, currentFile);
             ctx.ui.notify("Starting fresh session with restored context...", "info");

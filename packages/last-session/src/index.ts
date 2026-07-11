@@ -84,7 +84,7 @@ export async function saveSession(summary: string, lastKnownFile: string | null 
  * Generates a compact session summary using the active model if available,
  * falling back to a placeholder if no model is active or accessible.
  */
-export async function compactSession(ctx: ExtensionCommandContext): Promise<string> {
+export async function compactSession(ctx: ExtensionCommandContext, customInstructions?: string): Promise<string> {
   const model = ctx.model;
   if (!model) {
     console.warn('No active model in context to generate session summary. Using placeholder.');
@@ -112,7 +112,7 @@ export async function compactSession(ctx: ExtensionCommandContext): Promise<stri
       auth.apiKey,
       auth.headers,
       ctx.signal,
-      undefined, // customInstructions
+      customInstructions, // customInstructions
       undefined, // previousSummary
       undefined, // thinkingLevel
       undefined, // streamFn
@@ -136,7 +136,7 @@ export default function (pi: ExtensionAPI) {
     handler: async (args: string | undefined, ctx: ExtensionCommandContext) => {
       ctx.ui.notify("Saving session...", "info");
       const currentFile = getLastKnownFile(ctx);
-      const summary = args || "User initiated session save command.";
+      const summary = await compactSession(ctx, args);
       await saveSession(summary, currentFile);
       ctx.ui.notify("✅ Session successfully saved!", "info");
     }
@@ -147,7 +147,7 @@ export default function (pi: ExtensionAPI) {
     description: "Save current session, start new, and restore context",
     handler: async (args: string | undefined, ctx: ExtensionCommandContext) => {
       ctx.ui.notify("Saving current context...", "info");
-      const summary = await compactSession(ctx);
+      const summary = await compactSession(ctx, args);
       const currentFile = getLastKnownFile(ctx);
       await saveSession(summary, currentFile);
 
