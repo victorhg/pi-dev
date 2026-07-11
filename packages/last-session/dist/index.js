@@ -77,8 +77,8 @@ export async function compactSession(ctx) {
         return "This is a placeholder summary of the current work context. Full state capture requires Pi agent introspection.";
     }
     const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
-    if (!auth || !auth.ok || !auth.apiKey) {
-        console.warn('No API key available for current model to generate session summary. Using placeholder.');
+    if (!auth || !auth.ok) {
+        console.warn('No authentication available for current model to generate session summary. Using placeholder.');
         return "This is a placeholder summary of the current work context. Full state capture requires Pi agent introspection.";
     }
     try {
