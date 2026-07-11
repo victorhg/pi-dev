@@ -8,10 +8,22 @@
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "pi",
-    "session"
-  ],
+  "pi": {
+    "commands": [
+      {
+        "name": "save-session",
+        "description": "Compact and save current session context"
+      },
+      {
+        "name": "refresh-session",
+        "description": "Save current session, start new, and restore context"
+      },
+      {
+        "name": "last-session",
+        "description": "Read the last saved session context"
+      }
+    ]
+  },
   "author": "Victor Hugo Germano",
   "license": "ISC",
   "dependencies": {
