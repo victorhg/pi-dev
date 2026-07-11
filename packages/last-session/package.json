@@ -9,24 +9,21 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "pi": {
-    "commands": [
-      {
-        "name": "save-session",
-        "description": "Compact and save current session context"
-      },
-      {
-        "name": "refresh-session",
-        "description": "Save current session, start new, and restore context"
-      },
-      {
-        "name": "last-session",
-        "description": "Read the last saved session context"
-      }
+    "extensions": [
+      "./dist/index.js"
     ]
   },
   "author": "Victor Hugo Germano",
   "license": "ISC",
   "dependencies": {
     "fs": "^0.0.1-security"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2"
   }
 }

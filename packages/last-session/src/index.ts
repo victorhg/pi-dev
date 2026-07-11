@@ -1,19 +1,44 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import type { ExtensionAPI, ExtensionCommandContext } from '@earendil-works/pi-coding-agent';
 
 // Define the path to the session file relative to the project root
 const SESSION_FILE = path.join(process.cwd(), '.last-session');
 
 /**
  * Represents the saved state of the session.
- * In a real implementation, this would be much richer (e.g., chat history, current cursor position).
  */
 interface SessionState {
   savedAt: string;
   contextSummary: string;
   lastKnownFile: string | null;
-  // Placeholder for more complex context if available from the Pi Agent environment
-  // e.g., lastCommand: string;
+}
+
+/**
+ * Safely find the last known file path from the session's tool calls.
+ */
+function getLastKnownFile(ctx: ExtensionCommandContext): string | null {
+  const entries = ctx.sessionManager.getEntries();
+  // Traverse backwards
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i];
+    if (entry.type === 'message' && entry.message) {
+      const message = entry.message as any;
+      if (message.role === 'assistant' && Array.isArray(message.content)) {
+        for (const block of message.content) {
+          if (block.type === 'toolCall' && block.arguments) {
+            const toolName = block.name;
+            if (['read', 'edit', 'write', 'grep', 'find'].includes(toolName)) {
+              if (block.arguments && typeof block.arguments.path === 'string') {
+                return block.arguments.path;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return null;
 }
 
 /**
@@ -24,7 +49,7 @@ export async function readSession(): Promise<SessionState | null> {
   try {
     const content = await fs.readFile(SESSION_FILE, 'utf-8');
     return JSON.parse(content) as SessionState;
-  } catch (error) {
+  } catch (error: any) {
     if (error.code === 'ENOENT') {
       console.log('Session file not found. Starting fresh session.');
       return null;
@@ -56,83 +81,73 @@ export async function saveSession(summary: string, lastKnownFile: string | null 
 
 /**
  * Placeholder for generating a compact session summary.
- * In a full Pi integration, this would query the agent's memory/state.
  */
 export async function compactSession(): Promise<string> {
-    // For this implementation, we'll use a placeholder summary.
-    // In a real scenario, this would be the complex part that captures the state.
     console.log('Compacting session... (using placeholder logic)');
     return "This is a placeholder summary of the current work context. Full state capture requires Pi agent introspection.";
 }
 
 /**
- * Logic for /refresh-session: Compact, then start new, then load old.
- * This simulates a clean slate startup with retained context.
+ * Default export registering commands with the Pi Agent API.
  */
-export async function refreshSession(): Promise<void> {
-    console.log('\n🚀 Executing /refresh-session sequence...');
-
-    // 1. Run /compact command and save
-    const summary = await compactSession();
-    await saveSession(summary);
-
-    // 2. Run /new command (Simulated: means starting fresh)
-    console.log('💡 Simulating starting a new session...');
-    // In a real agent, this would trigger a system command to reset state variables.
-
-    // 3. Read <project-root>/.last-session
-    const savedState = await readSession();
-    if (savedState) {
-        console.log('\n🎉 Session refreshed! Restoring context...');
-        console.log('--- RESTORED CONTEXT ---');
-        console.log(`Summary: ${savedState.contextSummary}`);
-        console.log(`Last File: ${savedState.lastKnownFile || 'N/A'}`);
-        console.log('------------------------\n');
-    } else {
-        console.log('Session file was empty or failed to load after refresh.');
+export default function (pi: ExtensionAPI) {
+  // Register /save-session
+  pi.registerCommand("save-session", {
+    description: "Compact and save current session context",
+    handler: async (args: string | undefined, ctx: ExtensionCommandContext) => {
+      ctx.ui.notify("Saving session...", "info");
+      const currentFile = getLastKnownFile(ctx);
+      const summary = args || "User initiated session save command.";
+      await saveSession(summary, currentFile);
+      ctx.ui.notify("✅ Session successfully saved!", "info");
     }
-}
+  });
 
-// --- Command Handlers (These would be registered with the Pi Agent API) ---
+  // Register /refresh-session
+  pi.registerCommand("refresh-session", {
+    description: "Save current session, start new, and restore context",
+    handler: async (args: string | undefined, ctx: ExtensionCommandContext) => {
+      ctx.ui.notify("Saving current context...", "info");
+      const summary = await compactSession();
+      const currentFile = getLastKnownFile(ctx);
+      await saveSession(summary, currentFile);
 
-/**
- * Handles the /save-session command.
- * @param context The execution context (e.g., file path).
- */
-export async function handleSaveSession(context: { currentFile?: string }): Promise<void> {
-    console.log('\n💾 Executing /save-session...');
-    // In a real system, 'context.summary' would come from the agent's current thoughts.
-    const placeholderSummary = "User initiated session save command.";
-    await saveSession(placeholderSummary, context.currentFile || null);
-}
-
-/**
- * Handles the /refresh-session command.
- */
-export async function handleRefreshSession(): Promise<void> {
-    await refreshSession();
-}
-
-/**
- * Handles the /last-session command.
- */
-export async function handleLastSession(): Promise<void> {
-    console.log('\n🔎 Executing /last-session...');
-    const state = await readSession();
-    if (state) {
-        console.log('--- LAST SESSION CONTEXT ---');
-        console.log(`Saved At: ${state.savedAt}`);
-        console.log(`Summary: ${state.contextSummary}`);
-        console.log(`Last Known File: ${state.lastKnownFile || 'N/A'}`);
-        console.log('-----------------------------');
-    } else {
-        console.log('No previous session found.');
+      ctx.ui.notify("Starting fresh session with restored context...", "info");
+      
+      await ctx.newSession({
+        setup: async (sm) => {
+          const savedState = await readSession();
+          if (savedState) {
+            sm.appendMessage({
+              role: "user",
+              content: [{
+                type: "text",
+                text: `🔄 RESTORED SESSION CONTEXT:\n\nSummary: ${savedState.contextSummary}\nLast Known File: ${savedState.lastKnownFile || 'N/A'}`
+              }],
+              timestamp: Date.now()
+            });
+          }
+        },
+        withSession: async (newCtx) => {
+          newCtx.ui.notify("🎉 Session refreshed and context successfully restored!", "info");
+        }
+      });
     }
-}
+  });
 
-// Export handlers for potential registration
-export const commands = {
-    "save-session": handleSaveSession,
-    "refresh-session": handleRefreshSession,
-    "last-session": handleLastSession,
-};
+  // Register /last-session
+  pi.registerCommand("last-session", {
+    description: "Read the last saved session context",
+    handler: async (args: string | undefined, ctx: ExtensionCommandContext) => {
+      const state = await readSession();
+      if (state) {
+        ctx.ui.notify(
+          `📅 Saved At: ${state.savedAt}\n📝 Summary: ${state.contextSummary}\n📁 Last Known File: ${state.lastKnownFile || 'N/A'}`,
+          "info"
+        );
+      } else {
+        ctx.ui.notify("No previous session found.", "warning");
+      }
+    }
+  });
+}
