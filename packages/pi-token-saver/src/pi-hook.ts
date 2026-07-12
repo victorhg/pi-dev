@@ -38,7 +38,7 @@ export default async function activate(pi: ExtensionAPI) {
         ? 'No savings recorded yet — run a filtered command (e.g. git status, ls) first.'
         : `💰 Session savings: ${totalKB} KB (${totalBytes.toLocaleString()} bytes) across ${commandCount} command${commandCount === 1 ? '' : 's'}.`;
       if (ctx.hasUI) ctx.ui.notify(message, 'info');
-      else ctx.output(message);
+      else console.log(message);
     }
   });
 
@@ -49,7 +49,7 @@ export default async function activate(pi: ExtensionAPI) {
       if (history.length === 0) {
         const msg = 'No savings recorded yet — run a filtered command (e.g. git status, ls) first.';
         if (ctx.hasUI) ctx.ui.notify(msg, 'info');
-        else ctx.output(msg);
+        else console.log(msg);
         return;
       }
       const lines: string[] = ['Token savings breakdown:'];
@@ -62,7 +62,7 @@ export default async function activate(pi: ExtensionAPI) {
       lines.push(`Total: ${totalKB} KB`);
       const msg = lines.join('\n');
       if (ctx.hasUI) ctx.ui.notify(msg, 'info');
-      else ctx.output(msg);
+      else console.log(msg);
     }
   });
 
