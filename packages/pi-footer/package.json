@@ -2,24 +2,19 @@
   "name": "@victorhg/pi-footer",
   "version": "0.1.0",
   "type": "module",
-  "keywords": [
-    "pi-package"
-  ],
-  "description": "Rich footer status bar for pi coding agent — git branch, token stats, cost, context window progress, thinking indicator, and worktree support.",
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./registry": "./src/registry/index.ts"
   },
-  "files": [
-    "src"
-  ],
+  "scripts": {
+    "build": "tsc"
+  },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": ">=0.1.0",
     "@earendil-works/pi-tui": ">=0.1.0"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
-    "@types/node": "^26.1.1",
-    "typescript": "^7.0.2"
+    "typescript": "^5.0.0"
   }
 }

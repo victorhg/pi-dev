@@ -13,6 +13,7 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { getGitStatus, getWorktreeBranch } from "./utils/git.js";
 import { getContextWindowInfo, getTokenUsageStats, type TokenUsageStats, invalidateStatsCache, type ContextWindowInfo } from "./utils/stats.js";
 import { formatContextBar, formatGitStatusIndicators, formatThinkingIndicator, formatTokenCount } from "./utils/format.js";
+import { footerIcons } from "./utils/icons.js";
 import { footerRegistry } from "./registry/index.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

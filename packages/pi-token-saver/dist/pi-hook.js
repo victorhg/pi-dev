@@ -1,25 +1,24 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = activate;
-const filter_engine_1 = require("./filter-engine");
-const savings_tracker_1 = require("./savings-tracker");
-function activate(pi) {
-    const engine = new filter_engine_1.FilterEngine();
-    const tracker = new savings_tracker_1.SavingsTracker();
+import { FilterEngine, stripAnsi, truncateLinesAt } from './filter-engine';
+import { SavingsTracker } from './savings-tracker';
+import { footerRegistry } from "@victorhg/pi-footer/registry";
+export default function activate(pi) {
+    const engine = new FilterEngine();
+    const tracker = new SavingsTracker();
     let passthroughEnabled = false;
     // Setup rules
-    engine.register('git status', [filter_engine_1.stripAnsi, (0, filter_engine_1.truncateLinesAt)(50)]);
-    engine.register('git log', [filter_engine_1.stripAnsi, (0, filter_engine_1.truncateLinesAt)(80)]);
-    engine.register('ls', [filter_engine_1.stripAnsi, (0, filter_engine_1.truncateLinesAt)(50)]);
-    engine.register('find', [filter_engine_1.stripAnsi, (0, filter_engine_1.truncateLinesAt)(100)]);
-    engine.register('npm install', [filter_engine_1.stripAnsi, (0, filter_engine_1.truncateLinesAt)(30)]);
-    engine.register('yarn install', [filter_engine_1.stripAnsi, (0, filter_engine_1.truncateLinesAt)(30)]);
-    engine.register('pnpm install', [filter_engine_1.stripAnsi, (0, filter_engine_1.truncateLinesAt)(30)]);
-    engine.register('bun install', [filter_engine_1.stripAnsi, (0, filter_engine_1.truncateLinesAt)(30)]);
-    // Expose savings for other extensions
-    pi.tokenSaver = {
-        getSessionSavings: () => tracker.getSessionSavings(),
-    };
+    engine.register('git status', [stripAnsi, truncateLinesAt(50)]);
+    engine.register('git log', [stripAnsi, truncateLinesAt(80)]);
+    engine.register('ls', [stripAnsi, truncateLinesAt(50)]);
+    engine.register('find', [stripAnsi, truncateLinesAt(100)]);
+    engine.register('npm install', [stripAnsi, truncateLinesAt(30)]);
+    engine.register('yarn install', [stripAnsi, truncateLinesAt(30)]);
+    engine.register('pnpm install', [stripAnsi, truncateLinesAt(30)]);
+    engine.register('bun install', [stripAnsi, truncateLinesAt(30)]);
+    // Register with footer if available
+    footerRegistry.register('token-saver', () => {
+        const savingsKB = (tracker.getSessionSavings() / 1024).toFixed(1);
+        return `💰${savingsKB}KB`;
+    });
     pi.registerCommand('token-saver:passthrough', {
         description: 'Bypass filtering for next command',
         handler: async (_args, ctx) => {
