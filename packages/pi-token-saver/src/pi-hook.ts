@@ -25,6 +25,44 @@ export default function activate(pi: ExtensionAPI) {
     });
   }).catch(() => { /* pi-footer not installed — silently skip */ });
 
+  pi.registerCommand('token-saver:savings', {
+    description: 'Show total tokens saved this session',
+    handler: async (_args, ctx) => {
+      const totalBytes = tracker.getSessionSavings();
+      const totalKB = (totalBytes / 1024).toFixed(2);
+      const commandCount = tracker.getHistory().length;
+      const message = commandCount === 0
+        ? 'No savings recorded yet — run a filtered command (e.g. git status, ls) first.'
+        : `💰 Session savings: ${totalKB} KB (${totalBytes.toLocaleString()} bytes) across ${commandCount} command${commandCount === 1 ? '' : 's'}.`;
+      if (ctx.hasUI) ctx.ui.notify(message, 'info');
+      else ctx.output(message);
+    }
+  });
+
+  pi.registerCommand('token-saver:history', {
+    description: 'Show per-command token savings breakdown for this session',
+    handler: async (_args, ctx) => {
+      const history = tracker.getHistory();
+      if (history.length === 0) {
+        const msg = 'No savings recorded yet — run a filtered command (e.g. git status, ls) first.';
+        if (ctx.hasUI) ctx.ui.notify(msg, 'info');
+        else ctx.output(msg);
+        return;
+      }
+      const lines: string[] = ['Token savings breakdown:'];
+      for (const record of history) {
+        const kb = (record.bytesSaved / 1024).toFixed(2);
+        const time = new Date(record.timestamp).toLocaleTimeString();
+        lines.push(`  [${time}] ${record.command} — saved ${kb} KB`);
+      }
+      const totalKB = (tracker.getSessionSavings() / 1024).toFixed(2);
+      lines.push(`Total: ${totalKB} KB`);
+      const msg = lines.join('\n');
+      if (ctx.hasUI) ctx.ui.notify(msg, 'info');
+      else ctx.output(msg);
+    }
+  });
+
   pi.registerCommand('token-saver:passthrough', {
     description: 'Bypass filtering for next command',
     handler: async (_args, ctx) => {
