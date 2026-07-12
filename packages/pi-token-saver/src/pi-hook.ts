@@ -1,7 +1,6 @@
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { FilterEngine, stripAnsi, truncateLinesAt } from './filter-engine';
 import { SavingsTracker } from './savings-tracker';
-import { footerRegistry } from "@victorhg/pi-footer/registry";
 
 export default function activate(pi: ExtensionAPI) {
   const engine = new FilterEngine();
@@ -18,11 +17,13 @@ export default function activate(pi: ExtensionAPI) {
   engine.register('pnpm install', [stripAnsi, truncateLinesAt(30)]);
   engine.register('bun install', [stripAnsi, truncateLinesAt(30)]);
 
-  // Register with footer if available
-  footerRegistry.register('token-saver', () => {
-    const savingsKB = (tracker.getSessionSavings() / 1024).toFixed(1);
-    return `💰${savingsKB}KB`;
-  });
+  // Optionally register with pi-footer if it is installed — no hard dependency
+  import('@victorhg/pi-footer/registry').then(({ footerRegistry }) => {
+    footerRegistry.register('token-saver', () => {
+      const savingsKB = (tracker.getSessionSavings() / 1024).toFixed(1);
+      return `💰${savingsKB}KB`;
+    });
+  }).catch(() => { /* pi-footer not installed — silently skip */ });
 
   pi.registerCommand('token-saver:passthrough', {
     description: 'Bypass filtering for next command',

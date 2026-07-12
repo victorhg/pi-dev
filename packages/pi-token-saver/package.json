@@ -16,7 +16,9 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "^0.80.6",
+    "@earendil-works/pi-coding-agent": "^0.80.6"
+  },
+  "optionalDependencies": {
     "@victorhg/pi-footer": "workspace:*"
   }
 }
