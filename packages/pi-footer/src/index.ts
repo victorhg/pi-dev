@@ -160,6 +160,13 @@ export function registerFooter(pi: ExtensionAPI, config?: PiFooterConfig): void 
               if (totalCacheRead) statsParts.push("R" + formatTokenCount(totalCacheRead));
               if (totalCacheWrite) statsParts.push("W" + formatTokenCount(totalCacheWrite));
               if (totalCost) statsParts.push("$" + totalCost.toFixed(2));
+              
+              // Integrate Token Saver stats if available
+              const tokenSaver = (pi as any).tokenSaver;
+              if (tokenSaver) {
+                const savingsKB = (tokenSaver.getSessionSavings() / 1024).toFixed(1);
+                statsParts.push(theme.fg("success", "💰" + savingsKB + "KB"));
+              }
             }
 
             if (resolvedConfig.sections.contextBar) {
