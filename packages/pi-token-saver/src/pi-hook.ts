@@ -2,7 +2,7 @@ import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { FilterEngine, stripAnsi, truncateLinesAt } from './filter-engine';
 import { SavingsTracker } from './savings-tracker';
 
-export default function activate(pi: ExtensionAPI) {
+export default async function activate(pi: ExtensionAPI) {
   const engine = new FilterEngine();
   const tracker = new SavingsTracker();
   let passthroughEnabled = false;
