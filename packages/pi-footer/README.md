@@ -45,19 +45,26 @@ export default function (pi: ExtensionAPI) {
 
 ### Optional configuration
 
-Pass a config object with `splitThreshold` to control when the footer splits:
+Pass a config object to control footer appearance and behavior:
 
 ```typescript
 import registerFooter from "@victorhg/pi-footer";
 
 export default function (pi: ExtensionAPI) {
-  registerFooter(pi, { splitThreshold: 120 }); // Split at 120 chars instead of 150
+  registerFooter(pi, { 
+    splitThreshold: 120,
+    sections: {
+      git: false, // Disable git branch/status info
+      stats: true, // Keep token/cost stats
+    }
+  });
 }
 ```
 
 | Option | Default | Description |
 |---|---|---|
 | `splitThreshold` | `150` | Terminal width (cols) below which the footer splits into two lines |
+| `sections` | (all enabled) | Toggle individual footer sections (`directory`, `model`, `thinking`, `git`, `stats`, `contextBar`) |
 
 ## Features in detail
 

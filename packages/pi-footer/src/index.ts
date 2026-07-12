@@ -67,10 +67,27 @@ function getContextInfo(ctx: ExtensionContext): ContextWindowInfo {
 export interface PiFooterConfig {
   /** Terminal width threshold for two-line footer split (default 150) */
   splitThreshold?: number;
+  /** Sections to display in the footer */
+  sections?: {
+    directory?: boolean;
+    model?: boolean;
+    thinking?: boolean;
+    git?: boolean;
+    stats?: boolean;
+    contextBar?: boolean;
+  };
 }
 
 const DEFAULT_CONFIG: Required<PiFooterConfig> = {
   splitThreshold: 150,
+  sections: {
+    directory: true,
+    model: true,
+    thinking: true,
+    git: true,
+    stats: true,
+    contextBar: true,
+  },
 };
 
 function resolveConfig(config?: PiFooterConfig): Required<PiFooterConfig> {
@@ -125,11 +142,11 @@ export function registerFooter(pi: ExtensionAPI, config?: PiFooterConfig): void 
 
             // Left section: dir | branch [+status] | model | thinking | worktree
             const leftSections = [
-              colorize("syntaxFunction", " " + footerIcons.directory + currentDirectory),
-              currentBranch ? colorize("success", footerIcons.branch + " " + currentBranch + (gitStatusStr ? " " + gitStatusStr : "")) : "",
-              colorize("syntaxType", footerIcons.model + " " + activeModel),
-              thinkingIndicatorStr,
-              worktreeBranch ? colorize("syntaxNumber", footerIcons.worktree + " " + worktreeBranch) : "",
+              resolvedConfig.sections.directory ? colorize("syntaxFunction", " " + footerIcons.directory + currentDirectory) : "",
+              resolvedConfig.sections.git && currentBranch ? colorize("success", footerIcons.branch + " " + currentBranch + (gitStatusStr ? " " + gitStatusStr : "")) : "",
+              resolvedConfig.sections.model ? colorize("syntaxType", footerIcons.model + " " + activeModel) : "",
+              resolvedConfig.sections.thinking ? thinkingIndicatorStr : "",
+              resolvedConfig.sections.git && worktreeBranch ? colorize("syntaxNumber", footerIcons.worktree + " " + worktreeBranch) : "",
             ].filter(Boolean);
 
             const separator = theme.fg("dim", " · ");
@@ -137,24 +154,28 @@ export function registerFooter(pi: ExtensionAPI, config?: PiFooterConfig): void 
 
             // Token stats with context percentage
             const statsParts: string[] = [];
-            if (totalInput) statsParts.push("↑" + formatTokenCount(totalInput));
-            if (totalOutput) statsParts.push("↓" + formatTokenCount(totalOutput));
-            if (totalCacheRead) statsParts.push("R" + formatTokenCount(totalCacheRead));
-            if (totalCacheWrite) statsParts.push("W" + formatTokenCount(totalCacheWrite));
-            if (totalCost) statsParts.push("$" + totalCost.toFixed(2));
+            if (resolvedConfig.sections.stats) {
+              if (totalInput) statsParts.push("↑" + formatTokenCount(totalInput));
+              if (totalOutput) statsParts.push("↓" + formatTokenCount(totalOutput));
+              if (totalCacheRead) statsParts.push("R" + formatTokenCount(totalCacheRead));
+              if (totalCacheWrite) statsParts.push("W" + formatTokenCount(totalCacheWrite));
+              if (totalCost) statsParts.push("$" + totalCost.toFixed(2));
+            }
 
-            const contextUsed = contextWindowSize * (contextPercentValue / 100);
-            const contextDisplay =
-              contextPercent === "?"
-                ? "?"
-                : formatTokenCount(contextUsed) + "/" + formatTokenCount(contextWindowSize);
-            const contextColored =
-              contextPercentValue > 95
-                ? theme.fg("error", contextDisplay)
-                : contextPercentValue > 80
-                  ? theme.fg("warning", contextDisplay)
-                  : contextDisplay;
-            statsParts.push(contextColored);
+            if (resolvedConfig.sections.contextBar) {
+              const contextUsed = contextWindowSize * (contextPercentValue / 100);
+              const contextDisplay =
+                contextPercent === "?"
+                  ? "?"
+                  : formatTokenCount(contextUsed) + "/" + formatTokenCount(contextWindowSize);
+              const contextColored =
+                contextPercentValue > 95
+                  ? theme.fg("error", contextDisplay)
+                  : contextPercentValue > 80
+                    ? theme.fg("warning", contextDisplay)
+                    : contextDisplay;
+              statsParts.push(contextColored);
+            }
 
             const rawStatsSectionStr = statsParts.join(" ");
             const statsSectionStr = theme.fg("dim", rawStatsSectionStr);
