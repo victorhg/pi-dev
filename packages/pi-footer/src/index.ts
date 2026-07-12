@@ -13,7 +13,7 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { getGitStatus, getWorktreeBranch } from "./utils/git.js";
 import { getContextWindowInfo, getTokenUsageStats, type TokenUsageStats, invalidateStatsCache, type ContextWindowInfo } from "./utils/stats.js";
 import { formatContextBar, formatGitStatusIndicators, formatThinkingIndicator, formatTokenCount } from "./utils/format.js";
-import { footerIcons } from "./utils/icons.js";
+import { footerRegistry } from "./registry/index.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -161,11 +161,10 @@ export function registerFooter(pi: ExtensionAPI, config?: PiFooterConfig): void 
               if (totalCacheWrite) statsParts.push("W" + formatTokenCount(totalCacheWrite));
               if (totalCost) statsParts.push("$" + totalCost.toFixed(2));
               
-              // Integrate Token Saver stats if available
-              const tokenSaver = (pi as any).tokenSaver;
-              if (tokenSaver && typeof tokenSaver.getSessionSavings === 'function') {
-                const savingsKB = (tokenSaver.getSessionSavings() / 1024).toFixed(1);
-                statsParts.push(theme.fg("success", "💰" + savingsKB + "KB"));
+              // Integrate registered footer sections
+              const registeredSections = footerRegistry.getRenderers().map(r => r()).filter(Boolean);
+              if (registeredSections.length > 0) {
+                statsParts.push(...registeredSections);
               }
             }
 
