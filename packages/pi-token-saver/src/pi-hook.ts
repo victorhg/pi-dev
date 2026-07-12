@@ -18,12 +18,15 @@ export default function activate(pi: ExtensionAPI) {
   engine.register('bun install', [stripAnsi, truncateLinesAt(30)]);
 
   // Optionally register with pi-footer if it is installed — no hard dependency
-  import('@victorhg/pi-footer/registry').then(({ footerRegistry }) => {
+  try {
+    const { footerRegistry } = await import('@victorhg/pi-footer/registry');
     footerRegistry.register('token-saver', () => {
       const savingsKB = (tracker.getSessionSavings() / 1024).toFixed(1);
       return `💰${savingsKB}KB`;
     });
-  }).catch(() => { /* pi-footer not installed — silently skip */ });
+  } catch (err) {
+    // Silently ignore if @victorhg/pi-footer is not installed
+  }
 
   pi.registerCommand('token-saver:savings', {
     description: 'Show total tokens saved this session',
