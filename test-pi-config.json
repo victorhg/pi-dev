@@ -1,0 +1,8 @@
+{
+  "pi": {
+    "extensions": [
+      "@victorhg/pi-footer/src/index.ts",
+      "@victorhg/pi-token-saver/src/pi-hook.ts"
+    ]
+  }
+}

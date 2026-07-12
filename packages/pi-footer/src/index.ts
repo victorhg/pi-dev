@@ -163,7 +163,7 @@ export function registerFooter(pi: ExtensionAPI, config?: PiFooterConfig): void 
               
               // Integrate Token Saver stats if available
               const tokenSaver = (pi as any).tokenSaver;
-              if (tokenSaver) {
+              if (tokenSaver && typeof tokenSaver.getSessionSavings === 'function') {
                 const savingsKB = (tokenSaver.getSessionSavings() / 1024).toFixed(1);
                 statsParts.push(theme.fg("success", "💰" + savingsKB + "KB"));
               }
