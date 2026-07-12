@@ -48,9 +48,6 @@ importers:
       '@earendil-works/pi-coding-agent':
         specifier: ^0.80.6
         version: 0.80.6(ws@8.21.0)(zod@4.4.3)
-      '@victorhg/pi-footer':
-        specifier: workspace:*
-        version: link:../pi-footer
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -58,6 +55,10 @@ importers:
       typescript:
         specifier: ^5.0.0
         version: 5.9.3
+    optionalDependencies:
+      '@victorhg/pi-footer':
+        specifier: workspace:*
+        version: link:../pi-footer
 
 packages:
 

@@ -57,7 +57,38 @@ Watch `ctx.getContextUsage()` after each tool result and fire a warning at a con
 
 ---
 
+### `pi-no-bash` — Capability reduction
+
+The best bash tool is no bash at all. A more secure way to run agents in production is to reduce the capabilities of code being run without consent.
+
+**Motivation:** Prevent arbitrary command execution in sensitive production environments by creating a restricted execution model.
+
+**API hooks:**
+- `tool_middleware` — intercept or disable `bash` tool calls based on context or user settings
+
+**Commands:**
+- `no-bash:toggle` — enable/disable bash capabilities for the current session
+
+---
+
+### `pi-black-white-list` — Execution policy enforcement
+
+Create a list of permitted and prohibited commands that the pi instance can execute. This is a way to reduce the freedom and risk of pi in production.
+
+**Motivation:** Provide granular control over which shell commands are acceptable for the agent to use, mitigating the risk of unauthorized system operations.
+
+**API hooks:**
+- `tool_middleware` — validate `bash` command arguments against the allow-list/deny-list
+
+**Commands:**
+- `policy:allow <command>` — add command to permitted list
+- `policy:deny <command>` — add command to prohibited list
+- `policy:status` — view current security policy configuration
+
+---
+
 ## Recommended Build Order
+
 
 1. **`pi-cost-guard`** — straightforward event listener + commands, low API risk
 2. **`pi-tool-logger`** — uses untapped tool-call events, moderate complexity
