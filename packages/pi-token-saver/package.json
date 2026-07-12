@@ -1,0 +1,16 @@
+{
+  "name": "@victorhg/pi-token-saver",
+  "version": "0.1.0",
+  "description": "Intelligent bash output filtering to reduce token consumption",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "^0.80.6"
+  }
+}
