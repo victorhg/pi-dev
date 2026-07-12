@@ -29,15 +29,9 @@ To install the session management extension:
 pi install npm:@victorhg/pi-last-session
 ```
 
-## Contributing
+## Backlog
 
-We welcome contributions! Please follow the guidance in our [AGENTS.md](AGENTS.md) to understand how to work with our custom skills and maintain the project's quality standards.
-
-### Validation
-Before submitting changes, ensure you validate your work:
-- Inspect `git diff`.
-- Run package tests.
-- Validate skill metadata: `pnpx check-skills validate .agents --recursive --json`
+For features not yet implemented, please refer to the `new-features.md` backlog file.
 
 ## Skills
 
