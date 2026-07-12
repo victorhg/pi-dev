@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "description": "Intelligent bash output filtering to reduce token consumption",
   "main": "dist/index.js",
+  "pi": {
+    "extensions": [
+      "src/pi-hook.ts"
+    ]
+  },
   "scripts": {
     "build": "tsc"
   },
