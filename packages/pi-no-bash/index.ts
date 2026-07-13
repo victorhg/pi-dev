@@ -6,7 +6,7 @@ const toolMiddleware = async (call: any): Promise<{ status: 'blocked', reason: s
   if (call.tool === 'bash') {
     console.warn('The no-bash extension does not allow bash tool calling.');
     // Return a structure that signals blocking to the Pi runtime
-    return { status: 'blocked', reason: 'pi-no-bash active' };
+    return { block: true, reason: 'pi-no-bash active' };
   }
   // If not a bash tool, allow it to proceed by returning the original call
   return call;
