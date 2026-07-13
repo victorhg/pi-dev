@@ -1,14 +1,23 @@
-export const piNoBash = {
-  name: 'pi-no-bash',
-  onToolCall: (call: any) => {
-    if (call.tool === 'bash') {
-      // Logic to block or intercept
-      console.warn('Bash tool execution is restricted');
-      return { status: 'blocked', reason: 'pi-no-bash active' };
-    }
+import type { PiExtension, ToolCall, ToolCallDefinition } from "@earendil-works/pi-coding-agent";
+
+// Define the tool_middleware function
+const toolMiddleware = async (call: ToolCall | ToolCallDefinition): Promise<{ status: 'blocked', reason: string } | ToolCall | ToolCallDefinition> => {
+  // Check if the tool is 'bash'
+  if (call.tool === 'bash') {
+    console.warn('Bash tool execution is restricted by pi-no-bash.');
+    // Return a structure that signals blocking to the Pi runtime
+    return { status: 'blocked', reason: 'pi-no-bash active' };
   }
+  // If not a bash tool, allow it to proceed by returning the original call
+  return call;
 };
 
+export const piNoBash: PiExtension = {
+  name: 'pi-no-bash',
+  tool_middleware: toolMiddleware, // Use the tool_middleware hook for pre-execution interception
+};
+
+// Factory function for extension loading
 export default function() {
   return piNoBash;
 }
