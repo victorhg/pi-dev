@@ -11,9 +11,41 @@ Pi is a powerful coding assistant, but managing agent behavior, themes, and exte
 - **Workflow Governance**: Documented processes to ensure maintainability, validation, and release quality.
 - **Extensibility**: A structured monorepo environment designed for building and testing your own Pi extensions.
 
+## Building the Project
+
+The project is structured as a monorepo. You can build all packages from the root directory:
+
+```bash
+pnpm install
+pnpm build
+```
+
+Individual packages are located in the `packages/` directory and can be built independently if needed:
+
+```bash
+cd packages/<package-name>
+pnpm build
+```
+
 ## Installation
 
 This repository provides several packages that can be installed into your Pi environment.
+
+### Development Installation
+
+To use these packages during development, you can install them using their workspace paths or by building and referencing them directly:
+
+```bash
+# Build all packages first
+pnpm build
+
+# Install a specific package to your current project
+npm install ./packages/<package-name>
+```
+
+### Official Package Installation
+
+For production or standard usage, use the `pi install` command:
 
 ### Themes
 To install the curated themes and styling assets:
