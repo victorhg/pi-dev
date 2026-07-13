@@ -1,0 +1,6 @@
+{
+  "name": "@victorhg/pi-no-bash",
+  "version": "0.1.0",
+  "description": "Capability reduction for bash tool",
+  "main": "index.ts"
+}

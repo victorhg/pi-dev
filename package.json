@@ -4,6 +4,7 @@
 		"build": "pnpm -r build"
 	},
 	"dependencies": {
-		"@victorhg/pi-themes": "workspace:*"
+		"@victorhg/pi-themes": "workspace:*",
+		"@victorhg/pi-no-bash": "workspace:*"
 	}
 }
