@@ -104,7 +104,9 @@ export default async function activate(pi: ExtensionAPI) {
   pi.on('tool_call', (event: ToolCallEvent): void => {
     if (passthroughEnabled) return;
     if (isToolCallEventType('bash', event)) {
-      pendingBashCommands.set(event.toolCallId, (event.input as { command?: string }).command ?? '');
+      const command = (event.input as { command?: string }).command ?? '';
+      console.log(`[TokenSaver] Tool call captured: ${command}`);
+      pendingBashCommands.set(event.toolCallId, command);
     }
   });
 

@@ -97,7 +97,9 @@ export default async function activate(pi) {
         if (passthroughEnabled)
             return;
         if (isToolCallEventType('bash', event)) {
-            pendingBashCommands.set(event.toolCallId, event.input.command ?? '');
+            const command = event.input.command ?? '';
+            console.log(`[TokenSaver] Tool call captured: ${command}`);
+            pendingBashCommands.set(event.toolCallId, command);
         }
     });
     // Listen for tool_result to capture the output and record savings (post-execution)
