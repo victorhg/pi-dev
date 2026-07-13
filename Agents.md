@@ -5,6 +5,10 @@
 
 - Always commit changes using git with a summary of the latest changes immediately after completing a task or a significant set of changes.
 
+- Be direct and succint in your explanations.
+
+- Avoid duplicating explanations
+
 Guidance for coding agents working in this repository.
 
 ## Orientation

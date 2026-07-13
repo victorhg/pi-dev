@@ -2,3 +2,6 @@ node_modules/
 dist/
 .DS_Store
 .last-session
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
