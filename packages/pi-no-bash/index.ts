@@ -8,3 +8,7 @@ export const piNoBash = {
     }
   }
 };
+
+export default function() {
+  return piNoBash;
+}
