@@ -1,4 +1,8 @@
 {
+	"private": true,
+	"scripts": {
+		"build": "pnpm -r build"
+	},
 	"dependencies": {
 		"@victorhg/pi-themes": "workspace:*"
 	}

@@ -43,13 +43,15 @@ function computeStatsFromSession(ctx: ExtensionContext): TokenUsageStats {
 function getContextInfo(ctx: ExtensionContext): ContextWindowInfo {
   const contextUsage = (ctx as any).getContextUsage?.();
   if (!contextUsage) {
-    const modelContextWindow = (ctx as any).model?.contextWindow ?? (ctx as any).model?.maxTokens ?? 0;
+    const model = (ctx as any).model;
+    const modelContextWindow = (model?.contextWindow as number | undefined) ?? (model?.maxTokens as number | undefined) ?? 0;
     const tokenStats = getTokenUsageStats(ctx);
     const percentValue = modelContextWindow > 0 ? ((tokenStats.totalInput + tokenStats.totalOutput) / modelContextWindow) * 100 : 0;
     return { percent: "?", percentValue, windowSize: modelContextWindow };
   }
 
-  const modelContextWindow = (contextUsage.contextWindow as number | undefined) ?? (ctx as any).model?.contextWindow ?? (ctx as any).model?.maxTokens ?? 0;
+  const model = (ctx as any).model;
+  const modelContextWindow = (contextUsage.contextWindow as number | undefined) ?? (model?.contextWindow as number | undefined) ?? (model?.maxTokens as number | undefined) ?? 0;
   const tokenStats = getTokenUsageStats(ctx);
 
   const percentValue =
@@ -109,8 +111,8 @@ export function registerFooter(pi: ExtensionAPI, config?: PiFooterConfig): void 
     ctx.ui.setFooter((tui, theme, footerData) => {
       const unsubscribe = footerData.onBranchChange(() => tui.requestRender());
 
-      // Invalidate stats cache when branch changes (new message may arrive)
-      unsubscribe && undefined; // kept for dispose
+              // Invalidate stats cache when branch changes (new message may arrive)
+              invalidateStatsCache();
 
       return {
         dispose: unsubscribe,
@@ -163,7 +165,7 @@ export function registerFooter(pi: ExtensionAPI, config?: PiFooterConfig): void 
               if (totalCost) statsParts.push("$" + totalCost.toFixed(2));
               
               // Integrate registered footer sections
-              const registeredSections = footerRegistry.getRenderers().map(r => r()).filter(Boolean);
+              const registeredSections = footerRegistry.getRenderers().map(r => r()).filter((s): s is string => !!s);
               if (registeredSections.length > 0) {
                 statsParts.push(...registeredSections);
               }
@@ -225,7 +227,7 @@ export function registerFooter(pi: ExtensionAPI, config?: PiFooterConfig): void 
             );
 
             // Context progress bar (expands to fill remaining space)
-            const contextBarStr = formatContextBar(colorize as (token: string, s: string) => string, contextPercentValue, availableBarSpace);
+            const contextBarStr = formatContextBar(colorize as (token: string, s: string) => string, contextPercentValue, availableBarSpace || 0);
 
             // Assemble: left | stats | bar
             const rightSections: string[] = [];
