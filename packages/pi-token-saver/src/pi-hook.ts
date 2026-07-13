@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import type { ExtensionAPI, ToolCallEvent, ToolResultEvent, ExtensionContext, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType, isBashToolResult } from "@earendil-works/pi-coding-agent";
 import { FilterEngine, stripAnsi, truncateLinesAt } from './filter-engine';
@@ -44,7 +45,7 @@ export default async function activate(pi: ExtensionAPI) {
       const totalKB = (totalBytes / 1024).toFixed(2);
       const commandCount = tracker.getHistory().length;
       const message = commandCount === 0
-        ? 'No savings recorded yet — run a filtered command (e.g. git status, ls) first.'
+        ? 'No matched commands recorded yet — run a filtered command (e.g. git status, ls) first.'
         : `💰 Session savings: ${totalKB} KB (${totalBytes.toLocaleString()} bytes) across ${commandCount} command${commandCount === 1 ? '' : 's'}.`;
       if (ctx.hasUI) ctx.ui.notify(message, 'info');
       else console.log(message);
@@ -56,7 +57,7 @@ export default async function activate(pi: ExtensionAPI) {
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       const history = tracker.getHistory();
       if (history.length === 0) {
-        const msg = 'No savings recorded yet — run a filtered command (e.g. git status, ls) first.';
+        const msg = 'No matched commands recorded yet — run a filtered command (e.g. git status, ls) first.';
         if (ctx.hasUI) ctx.ui.notify(msg, 'info');
         else console.log(msg);
         return;
@@ -65,7 +66,8 @@ export default async function activate(pi: ExtensionAPI) {
       for (const record of history) {
         const kb = (record.bytesSaved / 1024).toFixed(2);
         const time = new Date(record.timestamp).toLocaleTimeString();
-        lines.push(`  [${time}] ${record.command} — saved ${kb} KB`);
+        const outcome = record.bytesSaved > 0 ? `saved ${kb} KB` : 'matched (no reduction)';
+        lines.push(`  [${time}] ${record.command} — ${outcome}`);
       }
       const totalKB = (tracker.getSessionSavings() / 1024).toFixed(2);
       lines.push(`Total: ${totalKB} KB`);
@@ -84,27 +86,33 @@ export default async function activate(pi: ExtensionAPI) {
   });
 
   // Build filtered text content items from the original content
-  function buildFilteredContent(originalContent: ContentItem[], command: string): ContentItem[] {
-    // Find the original text output
+  function buildFilteredContent(originalContent: ContentItem[], filteredOutput: string): ContentItem[] {
     const originalTextItems = originalContent.filter((c): c is TextContent => c.type === 'text');
-    const originalText = originalTextItems.map(t => t.text).join('\n');
-    if (!originalText) return originalContent;
+    if (originalTextItems.length === 0) return originalContent;
 
-    // Apply the engine filter to get filtered output
-    const filteredOutput = engine.apply(command, originalText);
-
-    // Replace text items with filtered output; keep images intact
-    return filteredOutput.split('\n').map(line => ({
+    const filteredTextItems: ContentItem[] = filteredOutput.split('\n').map(line => ({
       type: 'text' as const,
       text: line,
     }));
+
+    const nonTextItems = originalContent.filter((c): c is ImageContent => c.type !== 'text');
+    return [...filteredTextItems, ...nonTextItems];
   }
 
   // Listen for tool_call to capture the command text (pre-execution)
   pi.on('tool_call', (event: ToolCallEvent): void => {
     if (passthroughEnabled) return;
     if (isToolCallEventType('bash', event)) {
-      const command = (event.input as { command?: string }).command ?? '';
+      const rawCommand = (event.input as { command?: unknown }).command;
+      if (typeof rawCommand !== 'string') {
+        return;
+      }
+
+      const command = rawCommand.trim();
+      if (!command) {
+        return;
+      }
+
       console.log(`[TokenSaver] Tool call captured: ${command}`);
       pendingBashCommands.set(event.toolCallId, command);
     }
@@ -122,22 +130,27 @@ export default async function activate(pi: ExtensionAPI) {
     const command = pendingBashCommands.get(toolCallId);
     pendingBashCommands.delete(toolCallId);
 
-    if (!command) return;
+    if (!command) {
+      return;
+    }
 
-    // Extract text output from the result content
-    const textItems = event.content.filter((c): c is TextContent => c.type === 'text');
-    const output = textItems.map(t => t.text).join('\n');
-    if (!output) return;
+    try {
+      const textItems = event.content.filter((c): c is TextContent => c.type === 'text');
+      const output = textItems.map(t => t.text).join('\n');
+      const result = engine.applyWithMetadata(command, output);
+      const originalBytes = Buffer.byteLength(output, 'utf8');
+      const filteredBytes = Buffer.byteLength(result.output, 'utf8');
 
-    const filteredOutput = engine.apply(command, output);
+      tracker.record(command, originalBytes, filteredBytes, result.matched);
 
-    // Only record savings if filtering actually changed output
-    if (filteredOutput !== output) {
-      tracker.record(command, output.length, filteredOutput.length);
-      
-      // Return filtered content to replace original bash output
-      const filteredContent = buildFilteredContent(event.content, command);
+      if (!result.matched || result.output === output) {
+        return;
+      }
+
+      const filteredContent = buildFilteredContent(event.content, result.output);
       return { content: filteredContent };
+    } catch (error) {
+      console.error(`[TokenSaver] Failed to process tool result for command: ${command}`, error);
     }
   }) as any);
 }

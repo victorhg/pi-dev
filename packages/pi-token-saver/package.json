@@ -2,7 +2,12 @@
   "name": "@victorhg/pi-token-saver",
   "version": "0.1.0",
   "description": "Intelligent bash output filtering to reduce token consumption",
+  "type": "module",
   "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./pi-hook": "./dist/pi-hook.js"
+  },
   "keywords": [
     "pi-package"
   ],
@@ -13,7 +18,7 @@
   ],
   "pi": {
     "extensions": [
-      "dist/pi-hook.js"
+      "./dist/pi-hook.js"
     ]
   },
   "scripts": {

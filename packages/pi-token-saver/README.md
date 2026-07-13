@@ -5,7 +5,7 @@ Intelligent bash output filtering to reduce token consumption.
 ## Installation
 
 ```bash
-pi install ../../Development/pi-dev/packages/pi-token-saver
+pnpm add ./packages/pi-token-saver
 ```
 
 ## Configuration
@@ -16,7 +16,7 @@ To activate the extension, add it to your Pi configuration file:
 {
   "pi": {
     "extensions": [
-      "@victorhg/pi-token-saver/src/pi-hook.ts"
+      "@victorhg/pi-token-saver/dist/pi-hook.js"
     ]
   }
 }

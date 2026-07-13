@@ -23,14 +23,34 @@ export class FilterEngine {
     return processed;
   }
 
+  applyWithMetadata(command: string, output: string): { output: string; matched: boolean } {
+    const pipeline = this.findPipeline(command);
+    if (!pipeline) {
+      return { output, matched: false };
+    }
+
+    let processed = output;
+    for (const filter of pipeline) {
+      processed = filter.apply(processed);
+    }
+
+    return { output: processed, matched: true };
+  }
+
   private findPipeline(command: string): FilterPipeline | undefined {
-    // Simple exact match for now, can be expanded to regex matching
+    const normalizedCommand = this.normalizeCommand(command);
+
     for (const [pattern, pipeline] of this.registries.entries()) {
-      if (command.startsWith(pattern)) {
+      const normalizedPattern = this.normalizeCommand(pattern);
+      if (normalizedCommand.startsWith(normalizedPattern)) {
         return pipeline;
       }
     }
     return undefined;
+  }
+
+  private normalizeCommand(value: string): string {
+    return value.trim().replace(/\s+/g, ' ');
   }
 }
 
