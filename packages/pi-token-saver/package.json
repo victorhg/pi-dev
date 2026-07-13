@@ -3,9 +3,17 @@
   "version": "0.1.0",
   "description": "Intelligent bash output filtering to reduce token consumption",
   "main": "dist/index.js",
+  "keywords": [
+    "pi-package"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
   "pi": {
     "extensions": [
-      "src/pi-hook.ts"
+      "dist/pi-hook.js"
     ]
   },
   "scripts": {
