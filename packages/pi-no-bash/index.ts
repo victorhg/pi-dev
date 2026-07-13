@@ -1,7 +1,7 @@
 import type { Extension } from "@earendil-works/pi-coding-agent";
 
 // Define the tool_middleware function
-const toolMiddleware = async (call: any): Promise<{ status: 'blocked', reason: string } | any> => {
+const toolMiddleware = async (call: any): Promise<{ block: true, reason: string } | any> => {
   // Check if the tool is 'bash'
   if (call.tool === 'bash') {
     console.warn('The no-bash extension does not allow bash tool calling.');
