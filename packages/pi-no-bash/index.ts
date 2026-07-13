@@ -12,8 +12,7 @@ const toolMiddleware = async (call: any): Promise<{ status: 'blocked', reason: s
   return call;
 };
 
-export const piNoBash: Extension = {
-  name: 'pi-no-bash',
+export const piNoBash = {
   name: 'pi-no-bash',
   tool_middleware: toolMiddleware, // Use the tool_middleware hook for pre-execution interception
 };
