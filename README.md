@@ -47,19 +47,15 @@ npm install ./packages/<package-name>
 
 For production or standard usage, use the `pi install` command:
 
-### Themes
-To install the curated themes and styling assets:
+## Available Packages
 
-```bash
-pi install npm:@victorhg/pi-themes
-```
+This monorepo contains several curated packages for the Pi environment:
 
-### Session Management
-To install the session management extension:
-
-```bash
-pi install npm:@victorhg/pi-last-session
-```
+- **[@victorhg/pi-last-session](./packages/last-session/README.md)**: Manage session context across Pi coding sessions — compact, save, restore, and inspect previous work.
+- **[@victorhg/pi-footer](./packages/pi-footer/README.md)**: A rich, information-dense footer status bar for the Pi coding agent.
+- **[@victorhg/pi-no-bash](./packages/pi-no-bash/README.md)**: Capability reduction for Pi agents by intercepting and restricting bash tool calls.
+- **[@victorhg/pi-themes](./packages/pi-themes/README.md)**: Curated themes and styling assets for the Pi environment.
+- **[@victorhg/pi-token-saver](./packages/pi-token-saver/README.md)**: Intelligent bash output filtering to reduce token consumption.
 
 ## Backlog
 
