@@ -1,7 +1,7 @@
-import type { PiExtension, ToolCall, ToolCallDefinition } from "@earendil-works/pi-coding-agent";
+import type { Extension } from "@earendil-works/pi-coding-agent";
 
 // Define the tool_middleware function
-const toolMiddleware = async (call: ToolCall | ToolCallDefinition): Promise<{ status: 'blocked', reason: string } | ToolCall | ToolCallDefinition> => {
+const toolMiddleware = async (call: any): Promise<{ status: 'blocked', reason: string } | any> => {
   // Check if the tool is 'bash'
   if (call.tool === 'bash') {
     console.warn('Bash tool execution is restricted by pi-no-bash.');
@@ -12,7 +12,8 @@ const toolMiddleware = async (call: ToolCall | ToolCallDefinition): Promise<{ st
   return call;
 };
 
-export const piNoBash: PiExtension = {
+export const piNoBash: Extension = {
+  name: 'pi-no-bash',
   name: 'pi-no-bash',
   tool_middleware: toolMiddleware, // Use the tool_middleware hook for pre-execution interception
 };
