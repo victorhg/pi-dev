@@ -1,23 +1,10 @@
-import type { Extension } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-// Define the tool_middleware function
-const toolMiddleware = async (call: any): Promise<{ block: boolean, reason?: string } | any> => {
-  // Check if the tool is 'bash'
-  if (call.tool === 'bash') {
-    console.warn('The no-bash extension does not allow bash tool calling.');
-    // Return a structure that signals blocking to the Pi runtime
-    return { block: true, reason: 'pi-no-bash active' };
-  }
-  // If not a bash tool, allow it to proceed by returning the original call
-  return call;
-};
-
-export const piNoBash = {
-  name: 'pi-no-bash',
-  tool_middleware: toolMiddleware, // Use the tool_middleware hook for pre-execution interception
-};
-
-// Factory function for extension loading
-export default function() {
-  return piNoBash;
+export default function (pi: ExtensionAPI) {
+  pi.on("tool_call", async (event, ctx) => {
+    if (event.toolName === "bash") {
+      console.warn("The no-bash extension does not allow bash tool calling.");
+      return { block: true, reason: "pi-no-bash active" };
+    }
+  });
 }
