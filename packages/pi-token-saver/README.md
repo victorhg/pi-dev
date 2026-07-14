@@ -24,17 +24,20 @@ To activate the extension, add it to your Pi configuration file:
 
 ## Features
 
-- **Smart filtering**: Intercepts bash command output and applies targeted filters.
-- **Savings tracking**: Records bytes/tokens saved per command across the session.
-- **Footer integration**: Displays a `💰xKB` metric in the pi-footer status bar when `@victorhg/pi-footer` is installed (optional — no hard dependency).
-- **Passthrough mode**: Bypass filtering for a single command when needed.
+- **Semantic Compaction**: Parses raw outputs for Git commands, directory listings, search utilities, and installers to generate compact, highly semantic summaries instead of simple line truncation.
+- **Tee Recovery System**: Automatically saves raw command output on failures (non-zero exits) to `~/.pi/agent/token-saver/tee/` and appends a hint line with the file path, so the agent can read full logs if needed.
+- **Safety Guards**: Automatically bypasses filtering for command chains (`&&`, `;`), output redirection (`>`), piping (`|`), binary payloads, or very short outputs.
+- **Persistent Analytics**: Tracks running token/byte savings across sessions inside a lightweight local JSON store (`~/.pi/agent/token-saver/savings.json`).
+- **Footer Integration**: Displays a `💰xKB` cumulative metric in the status bar (integrating with `@victorhg/pi-footer` if present).
+- **Passthrough Mode**: Bypass filtering for the next command whenever full original output is required.
 
 ## Commands
 
 | Command | Description |
 |---|---|
-| `token-saver:savings` | Show total KB saved and number of filtered commands this session. |
-| `token-saver:history` | Show a per-command breakdown with bytes saved and timestamp. |
+| `token-saver:savings` | Show cumulative persistent KB saved and number of filtered runs. |
+| `token-saver:history` | Show a breakdown of the last 30 filtered commands with saved sizes. |
+| `token-saver:clear` | Purge persistent history and reset savings tracking. |
 | `token-saver:passthrough` | Bypass filtering for the next bash command (useful for debugging). |
 
 ## Usage
@@ -45,10 +48,11 @@ To view savings at any time, use the commands above. If `@victorhg/pi-footer` is
 
 ### Filtered commands (built-in rules)
 
-| Command pattern | Line limit |
-|---|---|
-| `git status` | 50 |
-| `git log` | 80 |
-| `ls` | 50 |
-| `find` | 100 |
-| `npm install` / `yarn install` / `pnpm install` / `bun install` | 30 |
+| Command pattern | Compaction strategy | Typical reduction |
+|---|---|---|
+| `git status` | Emoji-annotated file status grouping (staged, modified, untracked, conflicts) with inline file limits. | ~85% |
+| `git diff` | Reduced hunk contexts, binary file skipping, file changes overview, and change statistics. | ~80% |
+| `git log` | Compact commit oneline view showing hash and truncated subject, limited to 20 lines. | ~90% |
+| `ls` / `find` / `fd` / `tree` | High-noise directory filtering (`node_modules`, etc.), directory file counts, and extension overview. | ~80% |
+| `rg` / `grep` | File-grouped matching with match caps and file summary. | ~80% |
+| `npm` / `pnpm` / `yarn` / `bun` install | Single success summary line preserving warnings/errors and vulnerabilities. | ~90% |
