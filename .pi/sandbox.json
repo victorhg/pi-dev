@@ -1,0 +1,11 @@
+{
+  "filesystem": {
+    "allowRead": [
+      "/private/tmp/pi-github-repos/codexstar69/pi-rtk/src/tee.ts",
+      "/Users/victorhugogermano/Development/pi-dev/packages/pi-token-saver/package.json"
+    ],
+    "denyRead": [],
+    "allowWrite": [],
+    "denyWrite": []
+  }
+}
