@@ -5,6 +5,7 @@
 	},
 	"dependencies": {
 		"@victorhg/pi-themes": "workspace:*",
-		"@victorhg/pi-no-bash": "workspace:*"
+		"@victorhg/pi-no-bash": "workspace:*",
+		"@victorhg/pi-auto-compact": "workspace:*"
 	}
 }
