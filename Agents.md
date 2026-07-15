@@ -4,9 +4,7 @@
 # Mandatory Instructions for Agents
 
 - Always commit changes using git with a summary of the latest changes immediately after completing a task or a significant set of changes.
-
 - Be direct and succint in your explanations.
-
 - Avoid duplicating explanations
 
 Guidance for coding agents working in this repository.
@@ -53,6 +51,7 @@ Keep skill metadata activation-friendly:
 3. Root `README.md` for distribution positioning and commands.
 4. Source/tests for implementation details when docs are incomplete.
 
+
 ## Validation
 
 Before reporting implementation completion:
@@ -64,5 +63,7 @@ Before reporting implementation completion:
    registry wiring, or tooling changed.
 5. For skill edits, run
    `pnpx check-skills validate .agents --recursive --json`.
+6. When adding a feature, Update README.md wit the information 
+
 
 Report changed files, validation run, and unresolved risks only.
