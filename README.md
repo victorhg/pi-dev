@@ -58,6 +58,18 @@ This monorepo contains several curated packages for the Pi environment:
 - **[@victorhg/pi-token-saver](./packages/pi-token-saver/README.md)**: Intelligent bash output filtering to reduce token consumption.
 - **[@victorhg/pi-auto-compact](./packages/pi-auto-compact/README.md)**: Context window manager with threshold alerts, auto-compaction triggers, and footer status integration.
 
+### pi-auto-compact
+
+Monitors context window usage after every tool call and assistant turn. Sends a warning notification when usage crosses a configurable threshold (default **75 %**) and automatically triggers `/compact` with custom summarization instructions once usage reaches the compaction threshold (default **90 %**).
+
+| Command | Description |
+|---|---|
+| `/auto-compact:status` | Show current usage, thresholds, and compaction count. |
+| `/auto-compact:set <warn\|compact> <0-100>` | Adjust either threshold at runtime. |
+| `/auto-compact:instructions <text>` | Override the summarization prompt used during compaction. |
+
+When `@victorhg/pi-footer` is active, a live `📦N` indicator (or `⚠️📦` on warning) is injected into the status bar.
+
 ## Backlog
 
 For features not yet implemented, please refer to the `new-features.md` backlog file.
