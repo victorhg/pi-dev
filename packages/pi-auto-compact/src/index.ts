@@ -160,8 +160,10 @@ export default async function activate(pi: ExtensionAPI) {
     description: "Show auto-compact threshold levels, current usage, and compaction count",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       const usage = (ctx as any).getContextUsage?.();
-      const currentPercent = usage ? `${usage.percent.toFixed(1)}%` : 'Unknown%';
-      const currentTokens = usage ? `${usage.total.toLocaleString()} / ${usage.limit.toLocaleString()}` : 'Unknown';
+      const currentPercent = (usage && typeof usage.percent === 'number') ? `${usage.percent.toFixed(1)}%` : 'Unknown%';
+      const currentTokens = (usage && usage.total != null && usage.limit != null)
+        ? `${usage.total.toLocaleString()} / ${usage.limit.toLocaleString()}`
+        : 'Unknown';
       const count = session.ctx ? getCompactionCount(session.ctx) : 0;
 
       const lines = [

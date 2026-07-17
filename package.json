@@ -10,6 +10,7 @@
 	"dependencies": {
 		"@victorhg/pi-themes": "workspace:*",
 		"@victorhg/pi-footer": "workspace:*",
+		"@victorhg/pi-research": "workspace:*",
 		"@victorhg/pi-token-saver": "workspace:*",
 		"@victorhg/pi-auto-compact": "workspace:*"
 	}

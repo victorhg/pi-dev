@@ -14,6 +14,9 @@ importers:
       '@victorhg/pi-footer':
         specifier: workspace:*
         version: link:packages/pi-footer
+      '@victorhg/pi-research':
+        specifier: workspace:*
+        version: link:packages/pi-research
       '@victorhg/pi-themes':
         specifier: workspace:*
         version: link:packages/pi-themes
@@ -82,6 +85,25 @@ importers:
       typescript:
         specifier: ^5.0.0
         version: 5.9.3
+
+  packages/pi-research:
+    devDependencies:
+      '@earendil-works/pi-coding-agent':
+        specifier: file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent
+        version: file:../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent(ws@8.21.0)(zod@4.4.3)
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1(@types/node@20.19.43)
+    optionalDependencies:
+      '@victorhg/pi-footer':
+        specifier: workspace:*
+        version: link:../pi-footer
 
   packages/pi-themes: {}
 

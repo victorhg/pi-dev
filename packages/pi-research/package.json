@@ -1,0 +1,41 @@
+{
+  "name": "@victorhg/pi-research",
+  "version": "0.1.0",
+  "description": "Subject research and reference document generator. Runs structured research loops producing citable, shareable Markdown documents.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "keywords": [
+    "pi-package"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "build:self": "tsc",
+    "build": "tsc",
+    "check:self": "tsc --noEmit",
+    "test:self": "vitest run"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "optionalDependencies": {
+    "@victorhg/pi-footer": "workspace:*"
+  }
+}
