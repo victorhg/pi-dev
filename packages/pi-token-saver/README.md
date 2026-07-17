@@ -2,6 +2,23 @@
 
 Intelligent bash output filtering to reduce token consumption.
 
+## Optional: Footer integration
+
+Install `@victorhg/pi-footer` alongside this package to display a live `💰xKB`
+cumulative savings metric in the Pi status bar. Without it, the extension
+works normally but the metric is not visible.
+
+```json
+{
+  "pi": {
+    "extensions": [
+      "@victorhg/pi-footer/src/index.ts",
+      "@victorhg/pi-token-saver/dist/pi-hook.js"
+    ]
+  }
+}
+```
+
 ## Installation
 
 ```bash

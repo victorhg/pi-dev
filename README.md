@@ -52,11 +52,13 @@ For production or standard usage, use the `pi install` command:
 This monorepo contains several curated packages for the Pi environment:
 
 - **[@victorhg/pi-last-session](./packages/last-session/README.md)**: Manage session context across Pi coding sessions — compact, save, restore, and inspect previous work.
-- **[@victorhg/pi-footer](./packages/pi-footer/README.md)**: A rich, information-dense footer status bar for the Pi coding agent.
+- **[@victorhg/pi-footer](./packages/pi-footer/README.md)**: A rich, information-dense footer status bar for the Pi coding agent. Required by `pi-auto-compact` and `pi-token-saver` for status bar integration.
 - **[@victorhg/pi-no-bash](./packages/pi-no-bash/README.md)**: Capability reduction for Pi agents by intercepting and restricting bash tool calls.
 - **[@victorhg/pi-themes](./packages/pi-themes/README.md)**: Curated themes and styling assets for the Pi environment.
-- **[@victorhg/pi-token-saver](./packages/pi-token-saver/README.md)**: Intelligent bash output filtering to reduce token consumption.
-- **[@victorhg/pi-auto-compact](./packages/pi-auto-compact/README.md)**: Context window manager with threshold alerts, auto-compaction triggers, and footer status integration.
+- **[@victorhg/pi-token-saver](./packages/pi-token-saver/README.md)**: Intelligent bash output filtering to reduce token consumption. Optionally integrates with `pi-footer` for live savings metrics.
+- **[@victorhg/pi-auto-compact](./packages/pi-auto-compact/README.md)**: Context window manager with threshold alerts, auto-compaction triggers, and footer status integration. Optionally integrates with `pi-footer` for live usage metrics.
+
+> **Root bundle:** The root `package.json` declares the default distribution bundle — the packages installed when using `my-pi` out of the box. All packages are available individually via `pi install`.
 
 ### pi-auto-compact
 
@@ -94,6 +96,9 @@ Skills are categorized into two types:
 | Skill | Description |
 |---|---|
 | `code-quality` | Used when requesting code analysis, style reviews, linting recommendations, or refactoring suggestions. |
+| `critic-project` | Used when analyzing a project for architecture quality, unmitigated risks, and product coherence. |
+| `handoff` | Used to compact the current conversation into a handoff document for the next agent session. |
+| `summarize` | Used to produce a concise summary of the current session or a given topic. |
 
 
 ## Inspiration
