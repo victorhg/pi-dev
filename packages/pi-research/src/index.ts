@@ -4,8 +4,6 @@
  * Given a topic, runs a structured research loop (Planner → Researcher → Writer)
  * and produces a self-contained Markdown document with overview, key findings,
  * references, and recommended next directions.
- *
- * Inspired by multi-agent research systems (CogGen, ARIA).
  */
 
 import type {
@@ -149,7 +147,6 @@ export function renderDocument(doc: ResearchDocument): string {
 export function scoreSourceCredibility(url: string): number {
   const domain = url.split("/")[2] || "";
 
-  // High-credibility domains
   const highCredDomains = [
     "github.com",
     "arxiv.org",
@@ -167,7 +164,6 @@ export function scoreSourceCredibility(url: string): number {
     if (domain.includes(d)) return 90;
   }
 
-  // Medium-credibility (blog-like, wikis)
   const mediumCredDomains = [
     "wordpress.com",
     "blogger.com",
@@ -179,7 +175,7 @@ export function scoreSourceCredibility(url: string): number {
     if (domain.includes(d)) return 60;
   }
 
-  return 40; // default low
+  return 40;
 }
 
 /** Assign credibility label based on score. */
@@ -206,35 +202,43 @@ function initFooterBadge(): void {
       };
       return phaseLabels[session.phase] || undefined;
     });
-  } catch (err) {
+  } catch {
     // Silently ignore if @victorhg/pi-footer is not installed
   }
 }
 
-// ── Notification helpers ──────────────────────────────────────────────────────
+// ── Build research prompt ─────────────────────────────────────────────────────
 
-function notify(message: string, type: "info" | "warning" | "error"): void {
-  if (session.ctx && session.ctx.hasUI) {
-    session.ctx.ui.notify(message, type);
-  } else {
-    const prefix = `[Research]`;
-    if (type === "error") {
-      console.error(`${prefix} ${message}`);
-    } else if (type === "warning") {
-      console.warn(`${prefix} ${message}`);
-    } else {
-      console.log(`${prefix} ${message}`);
-    }
-  }
+function buildResearchPrompt(topic: string, path: string): string {
+  return `RESEARCH TASK — "${topic}"
+
+You are now in research mode. Execute this structured loop:
+
+### Phase 1: Planning
+Decompose "${topic}" into 3-5 focused sub-questions that cover different angles (definition, comparisons, use cases, trade-offs, alternatives).
+
+### Phase 2: Research
+For each sub-question:
+- Use \`web_search\` to find relevant sources
+- Use \`fetch_content\` to read the most promising ones
+- Score each source for credibility (high/medium/low) and relevance (0-100)
+
+### Phase 3: Writing
+Synthesize findings into a structured Markdown document with:
+- **Overview** — concise description of the subject
+- **Key Concepts** — definitions and relationships
+- **Findings** — answers to each sub-question with inline citations [^1]
+- **References** — numbered list with URL, title, credibility, and access date
+- **Directions** — open questions and recommended next steps
+
+Save the document to: \`${path}\``;
 }
 
 // ── Extension Activation ──────────────────────────────────────────────────────
 
 export default async function activate(pi: ExtensionAPI): Promise<void> {
-  // ── Footer badge ──────────────────────────────────────────────────────────
   initFooterBadge();
 
-  // ── Session Event Hooks ──────────────────────────────────────────────────
   pi.on("session_start", (_event, ctx: ExtensionContext) => {
     resetSession(ctx);
   });
@@ -243,17 +247,64 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
     resetSession();
   });
 
-  // ── Command: research:start <topic> ──────────────────────────────────────
+  // ── Command: /research ───────────────────────────────────────────────────
+  // Opens a multi-line editor dialog for the user to describe their research,
+  // then injects the structured research prompt to kick off the agent loop.
+  pi.registerCommand("research", {
+    description: "Open a dialog to describe your research topic, then run a structured research loop producing a citable Markdown document",
+    handler: async (_args: string, ctx: ExtensionCommandContext) => {
+      if (!ctx.isIdle()) {
+        ctx.ui.notify("⚠️ Agent is busy. Wait for it to finish before starting research.", "warning");
+        return;
+      }
+
+      const description = await ctx.ui.editor(
+        "What do you want to research?",
+        "",
+      );
+
+      if (!description || !description.trim()) {
+        ctx.ui.notify("Research cancelled — no topic provided.", "warning");
+        return;
+      }
+
+      const topic = description.trim();
+      const slug = slugify(topic.split("\n")[0]); // slug from first line
+      const path = researchPath(slug);
+      const now = new Date().toISOString();
+
+      session.phase = "planning";
+      session.subQuestions = [];
+      session.sources = [];
+      session.activeDoc = {
+        topic,
+        slug,
+        subQuestions: [],
+        sources: [],
+        sections: { overview: "", keyConcepts: "", findings: [], directions: "" },
+        createdAt: now,
+        path,
+      };
+
+      ctx.ui.notify(`🔬 Research starting — output: ${path}`, "info");
+
+      pi.sendUserMessage(buildResearchPrompt(topic, path));
+    },
+  });
+
+  // ── Command: /research:start <topic> ────────────────────────────────────
+  // Direct command for when the topic is known upfront (e.g. scripting).
   pi.registerCommand("research:start", {
-    description:
-      "Kick off a new research run: decompose topic into sub-questions, run web searches, and produce a structured document",
+    description: "Start a research run for a given topic (inline topic, no dialog)",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       const topic = args.trim();
       if (!topic) {
-        notify(
-          "❌ Usage: /research:start <topic>",
-          "error",
-        );
+        ctx.ui.notify("❌ Usage: /research:start <topic>", "error");
+        return;
+      }
+
+      if (!ctx.isIdle()) {
+        ctx.ui.notify("⚠️ Agent is busy. Wait for it to finish before starting research.", "warning");
         return;
       }
 
@@ -261,96 +312,33 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
       const path = researchPath(slug);
       const now = new Date().toISOString();
 
-      // Start planning phase
       session.phase = "planning";
       session.subQuestions = [];
       session.sources = [];
-
-      notify(`🔬 Starting research on: "${topic}"`, "info");
-      notify(`📄 Output: ${path}`, "info");
-
-      // Prompt the agent to handle the research loop via a system prompt injection.
-      // The agent should:
-      // 1. Decompose the topic into 3-5 focused sub-questions (planning phase)
-      // 2. Run web_search + fetch_content per sub-question (research phase)
-      // 3. Synthesize findings into a structured document (writer phase)
-      // 4. Save to the specified path using write tool
-
-      const researchPrompt = `RESEARCH TASK — "${topic}"
-
-You are now in research mode. Follow this structured loop:
-
-### Phase 1: Planning (sub-questions)
-Decompose "${topic}" into 3-5 focused sub-questions. These should cover different angles of the topic (definition, comparisons, use cases, trade-offs, alternatives).
-
-### Phase 2: Research
-For each sub-question:
-- Use \`web_search\` to find relevant sources
-- Use \`fetch_content\` to read promising sources
-- Score each source for credibility (high/medium/low)
-- Track URLs, titles, and relevance scores
-
-### Phase 3: Writing
-Synthesize findings into a structured Markdown document with:
-- **Overview** — concise description of the subject
-- **Key Concepts** — definitions and relationships
-- **Findings** — answers to each sub-question with inline citations
-- **References** — numbered list with URL, title, and access date
-- **Directions** — open questions and recommended next steps
-
-Save the document to: \`${path}\`
-
-When complete, call \`research:status\` to report results.`;
-
-      // Since we can't inject a system prompt directly, we inform the user
-      // that they should type the topic and the agent will handle the research
-      // via the pi agent's normal flow. The commands below let the agent
-      // track progress.
-
-      if (ctx.hasUI) {
-        ctx.ui.notify(
-          `🔬 Research session started on "${topic}".\n📄 Output: ${path}\n\nPlease proceed with the research. Use \`/research:status\` to check progress and \`/research:list\` to see past research.`,
-          "info",
-        );
-      } else {
-        console.log(
-          `🔬 Research session started on "${topic}".`,
-        );
-        console.log(`📄 Output: ${path}`);
-      }
-
-      // Create the initial document skeleton
-      const doc: ResearchDocument = {
+      session.activeDoc = {
         topic,
         slug,
         subQuestions: [],
         sources: [],
-        sections: {
-          overview: "",
-          keyConcepts: "",
-          findings: [],
-          directions: "",
-        },
+        sections: { overview: "", keyConcepts: "", findings: [], directions: "" },
         createdAt: now,
         path,
       };
 
-      session.activeDoc = doc;
+      ctx.ui.notify(`🔬 Research starting — output: ${path}`, "info");
 
-      // Signal to agent that it should now run the research loop
-      // by writing a planning message. The agent handles the rest.
+      pi.sendUserMessage(buildResearchPrompt(topic, path));
     },
   });
 
-  // ── Command: research:status ─────────────────────────────────────────────
+  // ── Command: /research:status ────────────────────────────────────────────
   pi.registerCommand("research:status", {
-    description:
-      "Show current research phase, topic, sub-questions, and sources collected",
-    handler: async (_args: string, ctx: ExtensionCommandContext) => {
+    description: "Show current research phase, topic, sub-questions, and sources collected",
+    handler: async (_args: string, _ctx: ExtensionCommandContext) => {
       const doc = session.activeDoc;
 
       if (!doc || session.phase === "idle") {
-        notify("No active research session. Use \`/research:start <topic>\` to begin.", "info");
+        session.ctx?.ui.notify("No active research session. Use `/research` to begin.", "info");
         return;
       }
 
@@ -365,107 +353,49 @@ When complete, call \`research:status\` to report results.`;
 
       if (doc.subQuestions.length > 0) {
         lines.push("  Questions:");
-        for (let i = 0; i < doc.subQuestions.length; i++) {
-          lines.push(`    ${i + 1}. ${doc.subQuestions[i]}`);
-        }
+        doc.subQuestions.forEach((q, i) => lines.push(`    ${i + 1}. ${q}`));
       }
 
       if (doc.sources.length > 0) {
         lines.push("  Top sources:");
-        const topSources = doc.sources
+        doc.sources
           .sort((a, b) => b.relevanceScore - a.relevanceScore)
-          .slice(0, 5);
-        for (const src of topSources) {
-          lines.push(
-            `    - ${src.title} [${src.credibility}] (${src.relevanceScore})`,
+          .slice(0, 5)
+          .forEach((src) =>
+            lines.push(`    - ${src.title} [${src.credibility}] (${src.relevanceScore})`),
           );
-        }
       }
 
-      const statusMessage = lines.join("\n");
-      notify(statusMessage, "info");
+      session.ctx?.ui.notify(lines.join("\n"), "info");
     },
   });
 
-  // ── Command: research:open ───────────────────────────────────────────────
-  pi.registerCommand("research:open", {
-    description: "Display the latest research document in the TUI",
-    handler: async (args: string, ctx: ExtensionCommandContext) => {
-      // Allow opening a specific document by topic or slug
-      const query = args.trim();
-
-      let path: string;
-
-      if (query) {
-        const slug = slugify(query);
-        path = researchPath(slug);
-      } else {
-        // Open the most recent research document
-        const doc = session.activeDoc;
-        if (doc) {
-          path = doc.path;
-        } else {
-          // Find the most recent file in research/
-          const fs = await import("fs");
-          try {
-            const files = fs.readdirSync("research").filter((f: string) => f.endsWith(".md"));
-            if (files.length === 0) {
-              notify("No research documents found. Use \`/research:start <topic>\` to create one.", "info");
-              return;
-            }
-            files.sort();
-            path = `research/${files[files.length - 1]}`;
-          } catch {
-            notify("No research directory found. Use \`/research:start <topic>\` to create one.", "info");
-            return;
-          }
-        }
-      }
-
-      // Try to read and display the document
-      const fs = await import("fs");
-      try {
-        const content = fs.readFileSync(path, "utf-8");
-        notify(content, "info");
-      } catch {
-        notify(`Research document not found at ${path}. Has the research run completed?`, "error");
-      }
-    },
-  });
-
-  // ── Command: research:list (when no active session exists) ───────────────
+  // ── Command: /research:list ──────────────────────────────────────────────
   pi.registerCommand("research:list", {
-    description: "List all saved research documents with metadata",
-    handler: async (_args: string, ctx: ExtensionCommandContext) => {
+    description: "List all saved research documents",
+    handler: async (_args: string, _ctx: ExtensionCommandContext) => {
       const fs = await import("fs");
       try {
         const files = fs.readdirSync("research").filter((f: string) => f.endsWith(".md"));
 
         if (files.length === 0) {
-          notify("No research documents found. Use \`/research:start <topic>\` to create one.", "info");
+          session.ctx?.ui.notify("No research documents found. Use `/research` to create one.", "info");
           return;
         }
 
         const lines = ["📚 Saved Research Documents:"];
-
         for (const file of files.sort().reverse()) {
-          const filePath = `research/${file}`;
-          const content = fs.readFileSync(filePath, "utf-8");
-
-          // Extract title from first line
+          const content = fs.readFileSync(`research/${file}`, "utf-8");
           const titleMatch = content.match(/^# (.+)$/m);
           const title = titleMatch ? titleMatch[1] : file.replace(".md", "");
-
-          // Extract date from date pattern
           const dateMatch = content.match(/Generated: (\d{4}-\d{2}-\d{2})/);
           const date = dateMatch ? dateMatch[1] : "unknown";
-
           lines.push(`  - ${title} (${date}) — ${file}`);
         }
 
-        notify(lines.join("\n"), "info");
+        session.ctx?.ui.notify(lines.join("\n"), "info");
       } catch {
-        notify("No research directory found. Use \`/research:start <topic>\` to create one.", "info");
+        session.ctx?.ui.notify("No research directory found. Use `/research` to create one.", "info");
       }
     },
   });
