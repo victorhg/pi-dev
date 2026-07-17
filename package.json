@@ -1,7 +1,11 @@
 {
 	"private": true,
 	"scripts": {
-		"build": "pnpm -r build"
+		"build": "pnpm -r build",
+		"check": "pnpm -r --if-present run check:self",
+		"test": "pnpm -r --if-present run test:self",
+		"check:skills": "pnpx check-skills validate .agents skills --recursive",
+		"validate": "pnpm run build && pnpm run check && pnpm run test && pnpm run check:skills"
 	},
 	"dependencies": {
 		"@victorhg/pi-themes": "workspace:*",

@@ -27,6 +27,26 @@ cd packages/<package-name>
 pnpm build
 ```
 
+## Validation
+
+Run the full validation gate (build, type-check, tests, skill checks) across every package from the root:
+
+```bash
+pnpm run validate
+```
+
+Or run each stage independently:
+
+| Script | What it does |
+|---|---|
+| `pnpm run build` | Builds every package (`pnpm -r build`). |
+| `pnpm run check` | Type-checks every package that defines `check:self` (skips the rest). |
+| `pnpm run test` | Runs tests for every package that defines `test:self` (skips the rest). |
+| `pnpm run check:skills` | Validates every skill under `.agents/` and `skills/` with `check-skills`. |
+
+These scripts use `pnpm -r --if-present`, so packages without a given
+script are silently skipped rather than failing the whole run.
+
 ## Installation
 
 This repository provides several packages that can be installed into your Pi environment.
