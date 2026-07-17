@@ -12,10 +12,19 @@ Subject research and reference document generator for the Pi coding agent. Runs 
 
 ## Commands
 
-- `/research:start <topic>` — Kick off a new research run: decompose topic into sub-questions, run web searches, and produce a structured document.
-- `/research:status` — Show current research phase, topic, sub-questions, and sources collected.
-- `/research:open [topic|slug]` — Display the latest (or specified) research document in the TUI.
-- `/research:list` — List all saved research documents with metadata.
+| Command | Description |
+|---|---|
+| `/research` | Open a multi-line editor dialog, describe your research topic, then launch the full research loop. |
+| `/research:start <topic>` | Inline variant — topic passed directly as argument, no dialog. |
+| `/research:status` | Show current phase, sub-questions, and sources collected. |
+| `/research:list` | List all saved research documents with dates. |
+
+### Typical flow
+
+1. Type `/research` — an editor dialog opens.
+2. Describe your topic (one line or several sentences).
+3. Submit — the agent decomposes the topic into sub-questions, runs `web_search` + `fetch_content` for each, and synthesizes a Markdown document.
+4. The output is saved to `research/<slug>.md`.
 
 ## Installation
 

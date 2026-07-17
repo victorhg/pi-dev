@@ -71,6 +71,7 @@ For production or standard usage, use the `pi install` command:
 
 This monorepo contains several curated packages for the Pi environment:
 
+- **[@victorhg/pi-research](./packages/pi-research/README.md)**: Subject research and reference document generator. Type `/research` to open a dialog, describe a topic, and the agent runs a structured Planner → Researcher → Writer loop producing a citable Markdown document saved to `research/<slug>.md`.
 - **[@victorhg/pi-last-session](./packages/last-session/README.md)**: Manage session context across Pi coding sessions — compact, save, restore, and inspect previous work.
 - **[@victorhg/pi-footer](./packages/pi-footer/README.md)**: A rich, information-dense footer status bar for the Pi coding agent. Required by `pi-auto-compact` and `pi-token-saver` for status bar integration.
 - **[@victorhg/pi-no-bash](./packages/pi-no-bash/README.md)**: Capability reduction for Pi agents by intercepting and restricting bash tool calls.
