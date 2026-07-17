@@ -1,7 +1,7 @@
 {
   "name": "@victorhg/pi-no-bash",
   "version": "0.1.0",
-  "description": "Capability reduction for bash tool",
+  "description": "Production security extension — permanently removes bash tool access from the Pi agent to eliminate shell execution as an attack vector.",
   "type": "module",
   "main": "./dist/index.js",
   "exports": {
