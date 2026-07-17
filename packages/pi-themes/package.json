@@ -12,6 +12,9 @@
   ],
   "author": "Victor Hugo Germano",
   "license": "ISC",
+  "scripts": {
+    "check:self": "node ./scripts/check-themes.mjs"
+  },
   "pi": {
     "themes": [
       "./themes"

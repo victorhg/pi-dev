@@ -22,7 +22,9 @@
     ]
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "build:self": "tsc",
+    "check:self": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
