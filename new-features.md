@@ -87,6 +87,64 @@ Create a list of permitted and prohibited commands that the pi instance can exec
 
 ---
 
+### `pi-plan-mode` — Implementation plan review and management
+
+Flip the agent into a read-only planning phase: it explores the codebase, drafts a numbered step-by-step execution plan, and waits for explicit approval before writing any file. Inspired by Claude Code's Plan Mode and GitHub Copilot's Plan Agent.
+
+**Motivation:** Prevents the agent from confidently executing the wrong solution. Forces a deliberate Explore → Plan → Review → Execute loop, making large refactors auditable before a single file is touched.
+
+**Flow:**
+1. User issues a task prefixed with `/plan` or activates plan mode via command.
+2. Agent enters **read-only** state — only `read`, `bash` (non-mutating), and `web_search` are permitted.
+3. Agent produces a Markdown plan: numbered steps, affected files, and open questions.
+4. User reviews inline, edits individual steps, then approves or rejects.
+5. On approval the agent re-enters normal mode and executes step-by-step, checking off each item.
+
+**API hooks:**
+- `tool_middleware` — block mutating tools (`edit`, `write`, destructive `bash`) while in plan state
+- `session_start` / `tool_result` — track plan state across turns
+- `footerRegistry` — show `📋 PLAN` badge when plan mode is active
+
+**Commands:**
+- `plan:start` — enter plan mode for the current task
+- `plan:show` — display the active plan
+- `plan:edit <step>` — replace or annotate a specific numbered step
+- `plan:approve` — exit read-only state and begin execution
+- `plan:abort` — discard plan and reset to normal mode
+
+---
+
+### `pi-research` — Subject research and reference document generator
+
+Given a topic or question, the agent runs a structured research loop — searching the web, reading sources, extracting citations — and produces a self-contained Markdown document with an overview, key findings, references, and recommended next directions. Inspired by multi-agent research systems like CogGen (Planner / Writer / Reviewer) and ARIA.
+
+**Motivation:** Long questions about libraries, architectures, or unfamiliar domains require many manual search rounds. `pi-research` automates that into a single command with a citable, shareable output artifact.
+
+**Flow:**
+1. User runs `research:start <topic>`.
+2. Agent (Planner phase) decomposes the topic into 3–5 focused sub-questions.
+3. Agent (Researcher phase) runs `web_search` + `fetch_content` per sub-question, scoring source credibility.
+4. Agent (Writer phase) synthesises findings into a structured document:
+   - **Overview** — concise description of the subject
+   - **Key Concepts** — definitions and relationships
+   - **Findings** — answers to each sub-question with inline citations
+   - **References** — numbered list with URL, title, and access date
+   - **Directions** — open questions and recommended next steps
+5. Document is saved to `research/<slug>.md` and surfaced in the TUI.
+
+**API hooks:**
+- `web_search` / `fetch_content` — primary data-gathering tools
+- `write` — persist the final document
+- `footerRegistry` — show `🔬 researching…` progress badge during the loop
+
+**Commands:**
+- `research:start <topic>` — kick off a new research run
+- `research:status` — show current phase and sources collected so far
+- `research:open` — display the latest research document in the TUI
+- `research:list` — list all saved research documents
+
+---
+
 ## Recommended Build Order
 
 
