@@ -8,36 +8,15 @@
  *   Line 2: usage stats (↑↓R W $cost + context progress bar)
  */
 
-import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { getGitStatus, getWorktreeBranch } from "./utils/git.js";
-import { getContextWindowInfo, getTokenUsageStats, type TokenUsageStats, invalidateStatsCache, type ContextWindowInfo } from "./utils/stats.js";
+import { getTokenUsageStats, invalidateStatsCache, resetSessionStats, type ContextWindowInfo } from "./utils/stats.js";
 import { formatContextBar, formatGitStatusIndicators, formatThinkingIndicator, formatTokenCount } from "./utils/format.js";
 import { footerIcons } from "./utils/icons.js";
 import { footerRegistry } from "./registry/index.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Compute token/cost stats from session entries. */
-function computeStatsFromSession(ctx: ExtensionContext): TokenUsageStats {
-  const entries = ctx.sessionManager.getEntries();
-  let totalInput = 0, totalOutput = 0, totalCacheRead = 0, totalCacheWrite = 0, totalCost = 0;
-
-  for (const sessionEntry of entries) {
-    if (sessionEntry?.type === "message" && (sessionEntry as any).message?.role === "assistant") {
-      const m = (sessionEntry as any).message as { usage?: { input?: number; output?: number; cacheRead?: number; cacheWrite?: number; cost?: { total?: number } } };
-      if (m.usage) {
-        totalInput += m.usage.input || 0;
-        totalOutput += m.usage.output || 0;
-        totalCacheRead += m.usage.cacheRead || 0;
-        totalCacheWrite += m.usage.cacheWrite || 0;
-        totalCost += m.usage.cost?.total || 0;
-      }
-    }
-  }
-
-  return { totalInput, totalOutput, totalCacheRead, totalCacheWrite, totalCost };
-}
 
 // Get context usage from the context object
 function getContextInfo(ctx: ExtensionContext): ContextWindowInfo {
@@ -102,9 +81,9 @@ function resolveConfig(config?: PiFooterConfig): Required<PiFooterConfig> {
 export function registerFooter(pi: ExtensionAPI, config?: PiFooterConfig): void {
   const resolvedConfig = resolveConfig(config);
 
-  // session_shutdown handler — cleanup on session end
+  // session_shutdown handler — flush caches so the next session starts clean
   pi.on("session_shutdown", (_event, _ctx) => {
-    // No accumulated state to clean — stats are computed inline per render
+    resetSessionStats();
   });
 
   pi.on("session_start", (_event, ctx: ExtensionContext) => {
@@ -127,10 +106,8 @@ export function registerFooter(pi: ExtensionAPI, config?: PiFooterConfig): void 
             const worktreeBranch = getWorktreeBranch();
             const thinkingLevel = (pi as any).getThinkingLevel?.() || "off";
 
-            // Compute merged stats (main session only — no subagent bus in this package)
-            const mergedStats = computeStatsFromSession(ctx);
-
-            const { totalInput, totalOutput, totalCacheRead, totalCacheWrite, totalCost } = mergedStats;
+            // Compute merged stats via the cached incremental scanner in stats.ts
+            const { totalInput, totalOutput, totalCacheRead, totalCacheWrite, totalCost } = getTokenUsageStats(ctx);
             const { percent: contextPercent, percentValue: contextPercentValue, windowSize: contextWindowSize } = getContextInfo(ctx);
 
             // ── Two-line split for narrow terminals ────────────────────────────

@@ -109,6 +109,13 @@ export function invalidateStatsCache(): void {
   statsCache = undefined;
 }
 
+/** Clear the stats cache AND running total — call on session_shutdown / session_start. */
+export function resetSessionStats(): void {
+  statsCache = undefined;
+  runningTotal = undefined;
+  runningTotalEntryCount = 0;
+}
+
 export interface ContextWindowInfo {
   percent: string;
   percentValue: number;
