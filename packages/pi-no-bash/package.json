@@ -2,14 +2,31 @@
   "name": "@victorhg/pi-no-bash",
   "version": "0.1.0",
   "description": "Capability reduction for bash tool",
-  "main": "./index.ts",
-  "scripts": {
-    "build": "tsc"
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
   },
-  "dependencies": {
+  "keywords": [
+    "pi-package"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:self": "tsc",
+    "check:self": "tsc --noEmit"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "^0.80.6",
+    "@earendil-works/pi-coding-agent": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
     "typescript": "^5.0.0"
   }
 }

@@ -1,10 +1,12 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as os from 'os';
 import type { ExtensionAPI, ExtensionCommandContext } from '@earendil-works/pi-coding-agent';
 import { generateSummary, sessionEntryToContextMessages } from '@earendil-works/pi-coding-agent';
 
-// Define the path to the session file relative to the project root
-const SESSION_FILE = path.join(process.cwd(), '.last-session');
+// Store sessions under the user home directory so the file is never inside a
+// project working directory and never accidentally committed to version control.
+const SESSION_FILE = path.join(os.homedir(), '.pi', 'agent', 'last-session', 'session.json');
 
 /**
  * Represents the saved state of the session.
@@ -73,6 +75,7 @@ export async function saveSession(summary: string, lastKnownFile: string | null 
   };
 
   try {
+    await fs.mkdir(path.dirname(SESSION_FILE), { recursive: true });
     await fs.writeFile(SESSION_FILE, JSON.stringify(state, null, 2));
     console.log(`✅ Session successfully saved to ${SESSION_FILE}`);
   } catch (error) {

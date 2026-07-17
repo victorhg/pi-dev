@@ -1,14 +1,33 @@
 import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
-// ── Package Settings & State ─────────────────────────────────────────────────
-let warnThreshold = 75;      // Warning notification threshold (%)
-let compactThreshold = 90;   // Auto-compaction trigger threshold (%)
+// ── User-configurable settings (persist across sessions by design) ────────────
+let warnThreshold = 75;
+let compactThreshold = 90;
 let customInstructions = "Focus on summarizing file operations, tasks completed, and critical code details, discarding verbose command outputs";
 
-let isCompacting = false;
-let warned = false;
-let lastPercent = 0;
-let currentCtx: ExtensionContext | undefined;
+// ── Session-scoped runtime state ──────────────────────────────────────────────
+// Isolated in a typed object so that session_start and session_shutdown can
+// reset it atomically. This prevents isCompacting or warned from leaking
+// between consecutive sessions that share the same module instance.
+export interface SessionState {
+  ctx: ExtensionContext | undefined;
+  isCompacting: boolean;
+  warned: boolean;
+  lastPercent: number;
+}
+
+export function makeCleanSession(): SessionState {
+  return { ctx: undefined, isCompacting: false, warned: false, lastPercent: 0 };
+}
+
+let session: SessionState = makeCleanSession();
+
+function resetSession(ctx?: ExtensionContext): void {
+  session = makeCleanSession();
+  if (ctx) session.ctx = ctx;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Count compaction entries in the current session. */
 function getCompactionCount(ctx: ExtensionContext): number {
@@ -21,20 +40,20 @@ function getCompactionCount(ctx: ExtensionContext): number {
 }
 
 /** Check context usage and trigger warning or compaction. */
-function checkContextUsage(ctx: ExtensionContext) {
-  if (isCompacting) return;
+export function checkContextUsage(ctx: ExtensionContext) {
+  if (session.isCompacting) return;
 
   const usage = (ctx as any).getContextUsage?.();
   if (!usage) return;
 
-  const percentValue = usage.percent; // e.g. 78.5 (number between 0 and 100)
+  const percentValue = usage.percent;
   if (typeof percentValue !== "number") return;
 
-  lastPercent = percentValue;
+  session.lastPercent = percentValue;
 
   // 1. Auto-compaction trigger
   if (percentValue >= compactThreshold) {
-    isCompacting = true;
+    session.isCompacting = true;
 
     const notifyMsg = `⚠️ Context window usage is at ${percentValue.toFixed(1)}% (Threshold: ${compactThreshold}%). Triggering auto-compaction...`;
     if (ctx.hasUI) {
@@ -47,8 +66,8 @@ function checkContextUsage(ctx: ExtensionContext) {
       ctx.compact({
         customInstructions,
         onComplete: () => {
-          isCompacting = false;
-          warned = false;
+          session.isCompacting = false;
+          session.warned = false;
           const msg = "📦 Auto-compaction completed successfully!";
           if (ctx.hasUI) {
             ctx.ui.notify(msg, "info");
@@ -57,7 +76,7 @@ function checkContextUsage(ctx: ExtensionContext) {
           }
         },
         onError: (err: Error) => {
-          isCompacting = false;
+          session.isCompacting = false;
           const errMsg = `❌ Auto-compaction failed: ${err.message}`;
           if (ctx.hasUI) {
             ctx.ui.notify(errMsg, "error");
@@ -67,13 +86,13 @@ function checkContextUsage(ctx: ExtensionContext) {
         }
       });
     } else {
-      isCompacting = false;
+      session.isCompacting = false;
       console.error("[AutoCompact] ctx.compact is not a function");
     }
   }
   // 2. Warning trigger
-  else if (percentValue >= warnThreshold && !warned) {
-    warned = true;
+  else if (percentValue >= warnThreshold && !session.warned) {
+    session.warned = true;
     const warnMsg = `⚠️ Warning: Context window usage is at ${percentValue.toFixed(1)}% (Threshold: ${warnThreshold}%). Auto-compaction will trigger at ${compactThreshold}%.`;
     if (ctx.hasUI) {
       ctx.ui.notify(warnMsg, "warning");
@@ -82,25 +101,25 @@ function checkContextUsage(ctx: ExtensionContext) {
     }
   }
   // 3. Reset warned state if context usage drops back below warning threshold
-  else if (percentValue < warnThreshold && warned) {
-    warned = false;
+  else if (percentValue < warnThreshold && session.warned) {
+    session.warned = false;
   }
 }
 
-// ── Extension Activation ─────────────────────────────────────────────────────
+// ── Extension Activation ──────────────────────────────────────────────────────
 export default async function activate(pi: ExtensionAPI) {
-  
+
   // Try registering with the @victorhg/pi-footer status bar registry
   try {
     const { footerRegistry } = await import('@victorhg/pi-footer/registry');
     footerRegistry.register('auto-compact', () => {
-      if (!currentCtx) return undefined;
-      
-      const count = getCompactionCount(currentCtx);
+      if (!session.ctx) return undefined;
+
+      const count = getCompactionCount(session.ctx);
       if (count > 0) {
         return `📦${count}`;
       }
-      if (lastPercent >= warnThreshold) {
+      if (session.lastPercent >= warnThreshold) {
         return `⚠️📦`;
       }
       return undefined;
@@ -111,18 +130,19 @@ export default async function activate(pi: ExtensionAPI) {
 
   // ── Session Event Hooks ────────────────────────────────────────────────────
   pi.on("session_start", (_event, ctx: ExtensionContext) => {
-    currentCtx = ctx;
-    warned = false;
-    isCompacting = false;
-    
-    // Perform initial context usage check
+    // Full reset on every new session — config vars intentionally preserved.
+    resetSession(ctx);
+
+    // Perform initial context usage check after Pi has settled.
     setTimeout(() => {
-      if (currentCtx) checkContextUsage(currentCtx);
+      if (session.ctx) checkContextUsage(session.ctx);
     }, 1000);
   });
 
   pi.on("session_shutdown", () => {
-    currentCtx = undefined;
+    // Full reset on shutdown so no stale flags survive into the next session
+    // even if session_start is delayed or skipped in a given process lifecycle.
+    resetSession();
   });
 
   // Re-evaluate context size after a tool executes
@@ -142,7 +162,7 @@ export default async function activate(pi: ExtensionAPI) {
       const usage = (ctx as any).getContextUsage?.();
       const currentPercent = usage ? `${usage.percent.toFixed(1)}%` : 'Unknown%';
       const currentTokens = usage ? `${usage.total.toLocaleString()} / ${usage.limit.toLocaleString()}` : 'Unknown';
-      const count = currentCtx ? getCompactionCount(currentCtx) : 0;
+      const count = session.ctx ? getCompactionCount(session.ctx) : 0;
 
       const lines = [
         `📦 Auto-Compact Analytics:`,
@@ -150,7 +170,7 @@ export default async function activate(pi: ExtensionAPI) {
         `  - Warning Threshold: ${warnThreshold}%`,
         `  - Compaction Threshold: ${compactThreshold}%`,
         `  - Auto-Compactions Performed: ${count}`,
-        `  - Status: ${isCompacting ? 'Compacting...' : 'Monitoring'}`,
+        `  - Status: ${session.isCompacting ? 'Compacting...' : 'Monitoring'}`,
         `  - Custom Instructions: "${customInstructions}"`
       ];
 

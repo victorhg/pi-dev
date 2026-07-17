@@ -72,8 +72,8 @@ importers:
   packages/pi-no-bash:
     devDependencies:
       '@earendil-works/pi-coding-agent':
-        specifier: ^0.80.6
-        version: 0.80.6(ws@8.21.0)(zod@4.4.3)
+        specifier: file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent
+        version: file:../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent(ws@8.21.0)(zod@4.4.3)
       typescript:
         specifier: ^5.0.0
         version: 5.9.3
