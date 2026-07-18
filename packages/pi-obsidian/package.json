@@ -1,0 +1,42 @@
+{
+  "name": "@victorhg/pi-obsidian",
+  "version": "0.1.0",
+  "description": "Obsidian vault tools for the Pi coding agent — read, search, create, and manage notes via the Obsidian CLI.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "keywords": [
+    "pi-package",
+    "obsidian",
+    "vault",
+    "notes"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "build:self": "tsc",
+    "build": "tsc",
+    "check:self": "tsc --noEmit",
+    "test:self": "vitest run"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+    "@types/node": "^20.0.0",
+    "typebox": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/typebox",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}

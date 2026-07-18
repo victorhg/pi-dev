@@ -14,6 +14,9 @@ importers:
       '@victorhg/pi-footer':
         specifier: workspace:*
         version: link:packages/pi-footer
+      '@victorhg/pi-obsidian':
+        specifier: workspace:*
+        version: link:packages/pi-obsidian
       '@victorhg/pi-research':
         specifier: workspace:*
         version: link:packages/pi-research
@@ -85,6 +88,24 @@ importers:
       typescript:
         specifier: ^5.0.0
         version: 5.9.3
+
+  packages/pi-obsidian:
+    devDependencies:
+      '@earendil-works/pi-coding-agent':
+        specifier: file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent
+        version: file:../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent(ws@8.21.0)(zod@4.4.3)
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.43
+      typebox:
+        specifier: file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/typebox
+        version: file:../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/typebox
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1(@types/node@20.19.43)
 
   packages/pi-research:
     devDependencies:
@@ -1285,6 +1306,9 @@ packages:
 
   typebox@1.1.38:
     resolution: {integrity: sha512-pZ0aQPmMmXoUvSbeuWf/Hzsc+avNw/Zd6VeE8CFgkVGWyuHPJvqeJJDeJqLve+K70LvjYIoleGcoJHPT17cWoA==}
+
+  typebox@file:../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/typebox:
+    resolution: {directory: ../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/typebox, type: directory}
 
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
@@ -2604,6 +2628,8 @@ snapshots:
   type-detect@4.1.0: {}
 
   typebox@1.1.38: {}
+
+  typebox@file:../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/typebox: {}
 
   typescript@5.9.3: {}
 
