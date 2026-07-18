@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { parseRunString, makeCleanSession } from "./index.js";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { parseRunString, makeCleanSession, resolveObsidianBin } from "./index.js";
 
 // ── parseRunString ────────────────────────────────────────────────────────────
 
@@ -70,5 +70,27 @@ describe("makeCleanSession", () => {
     const b = makeCleanSession();
     a.lastCommand = "daily:read";
     expect(b.lastCommand).toBeNull();
+  });
+});
+
+
+// ── resolveObsidianBin ────────────────────────────────────────────────────────
+
+describe("resolveObsidianBin", () => {
+  afterEach(() => {
+    // Reset the module-level cache between tests by re-importing is complex;
+    // just verify the function returns a non-empty string and doesn't throw.
+  });
+
+  it("returns a non-empty string", async () => {
+    const bin = await resolveObsidianBin();
+    expect(typeof bin).toBe("string");
+    expect(bin.length).toBeGreaterThan(0);
+  });
+
+  it("returns the same value on repeated calls (cached)", async () => {
+    const a = await resolveObsidianBin();
+    const b = await resolveObsidianBin();
+    expect(a).toBe(b);
   });
 });

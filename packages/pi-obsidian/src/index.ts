@@ -17,10 +17,54 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { execFile } from "node:child_process";
+import { execFile, exec } from "node:child_process";
 import { promisify } from "node:util";
+import { access, constants } from "node:fs/promises";
 
 const execFileAsync = promisify(execFile);
+const execAsync = promisify(exec);
+
+// ── Binary resolution ────────────────────────────────────────────────────────
+
+/**
+ * Resolve the absolute path to the `obsidian` binary using the shell's PATH.
+ * Falls back to a list of known macOS install locations before giving up.
+ * The result is cached for the lifetime of the process.
+ */
+const KNOWN_PATHS = [
+  "/usr/local/bin/obsidian",
+  `${process.env.HOME ?? ""}/.local/bin/obsidian`,
+  "/opt/homebrew/bin/obsidian",
+];
+
+let resolvedBin: string | null = null;
+
+export async function resolveObsidianBin(): Promise<string> {
+  if (resolvedBin) return resolvedBin;
+
+  // Ask the shell — picks up PATH from .zshrc / .bashrc / .profile
+  try {
+    const { stdout } = await execAsync(
+      "which obsidian 2>/dev/null || command -v obsidian 2>/dev/null",
+      { shell: "/bin/sh" }
+    );
+    const p = stdout.trim();
+    if (p) { resolvedBin = p; return p; }
+  } catch { /* fall through */ }
+
+  // Try known install locations
+  for (const p of KNOWN_PATHS) {
+    try {
+      await access(p, constants.X_OK);
+      resolvedBin = p;
+      return p;
+    } catch { /* try next */ }
+  }
+
+  // Give up — execFile will throw ENOENT with a clear message
+  resolvedBin = "obsidian";
+  return resolvedBin;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -64,12 +108,14 @@ export function parseRunString(run: string): string[] {
 /**
  * Run an Obsidian CLI command from the current working directory.
  * The CLI resolves the vault from cwd automatically.
+ * Uses the resolved binary path to avoid ENOENT when PATH differs from the shell.
  */
 export async function runObsidianCLI(
   args: string[],
   timeoutMs = 15_000
 ): Promise<string> {
-  const { stdout } = await execFileAsync("obsidian", args, {
+  const bin = await resolveObsidianBin();
+  const { stdout } = await execFileAsync(bin, args, {
     timeout: timeoutMs,
     env: { ...process.env },
   });
@@ -78,9 +124,17 @@ export async function runObsidianCLI(
 
 /**
  * Check whether the `obsidian` binary is available and reachable.
- * Returns null on success, or an error message string.
+ * Returns null on success, or a diagnostic string on failure.
  */
 export async function checkObsidianAvailable(): Promise<string | null> {
+  const bin = await resolveObsidianBin();
+  if (bin === "obsidian") {
+    return (
+      "'obsidian' binary not found in PATH or known locations.\n" +
+      "Enable the CLI in Obsidian → Settings → General → Command line interface, " +
+      "then follow the prompt to register it."
+    );
+  }
   try {
     await runObsidianCLI(["version"], 5_000);
     return null;
@@ -132,6 +186,16 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
 
   pi.on("session_start", (_event, ctx) => {
     resetSession(ctx);
+    // Resolve the binary path eagerly so the first tool call is instant.
+    // Logs a warning if obsidian isn't found.
+    void resolveObsidianBin().then((bin) => {
+      if (bin === "obsidian") {
+        ctx.ui.notify(
+          "⚠️ pi-obsidian: 'obsidian' binary not found.\nEnable the CLI in Obsidian → Settings → General → Command line interface.",
+          "warning"
+        );
+      }
+    });
   });
 
   pi.on("session_shutdown", () => {
