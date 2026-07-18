@@ -2,11 +2,14 @@
 
 Obsidian vault tools for the Pi coding agent — read, search, create, and manage notes via the [Obsidian CLI](https://obsidian.md/cli).
 
+Designed to run with pi launched from inside an Obsidian vault directory. The CLI resolves the vault from the current working directory automatically — no vault targeting needed.
+
 ## Requirements
 
 - **Obsidian 1.12+** with CLI enabled: **Settings → General → Command line interface**
 - **Obsidian desktop app must be running** — the CLI communicates via IPC
 - The `obsidian` binary must be in your PATH (the installer handles this on first enable)
+- **pi must be launched from inside the vault directory**
 
 ## Installation
 
@@ -23,17 +26,15 @@ pnpm --filter @victorhg/pi-obsidian build
 
 ## Features
 
-- **Single `obsidian` tool** — runs any Obsidian CLI command; the LLM calls it with a `run` string and optional `vault` override
+- **Single `obsidian` tool** — runs any Obsidian CLI command; the LLM calls it with a `run` string
 - **System-prompt guidelines** — injected on every agent turn so the LLM knows how to use the tool correctly
-- **Session vault** — `/obsidian:vault <name>` sets a persistent default vault for the session
 - **Convenience commands** — quick access to daily notes, search, tasks, and reading notes without prompting the LLM
 
 ## Commands
 
 | Command | Description |
 |---|---|
-| `/obsidian:status` | Verify CLI is reachable and show active vault info |
-| `/obsidian:vault [name]` | Set (or show) the default vault for this session |
+| `/obsidian:status` | Verify CLI is reachable and show current vault info |
 | `/obsidian:note <name>` | Read a note by name and load it into the agent context |
 | `/obsidian:search <query>` | Full-text vault search; pick a result to summarise |
 | `/obsidian:daily` | Read today's daily note and summarise it |
@@ -45,7 +46,7 @@ The `obsidian` tool accepts any Obsidian CLI command string:
 
 ```
 obsidian run="read file=Meeting Notes"
-obsidian run="search query=roadmap format=json" vault="Work"
+obsidian run="search query=roadmap format=json"
 obsidian run="create path=Projects/Idea.md content=# My Idea"
 obsidian run="daily:append content=- [ ] Review PR"
 obsidian run="property:set file=Note name=status value=active"
@@ -58,7 +59,6 @@ obsidian run="backlinks file=ProjectPlan format=json"
 - Quote values with spaces: `file="My Note"`, `content="hello world"`
 - Boolean flags have no value: `permanent`, `overwrite`, `recursive`, `verbose`
 - JSON output: add `format=json`
-- Target a vault: pass `vault="Vault Name"` parameter to the tool
 
 ## Full CLI Reference
 

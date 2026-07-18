@@ -45,6 +45,11 @@ describe("parseRunString", () => {
     expect(result.some((a) => a.startsWith("content="))).toBe(true);
   });
 
+  it("never produces vault= args — vault is resolved from cwd by the CLI", () => {
+    const result = parseRunString("daily:read");
+    expect(result.some((a) => a.startsWith("vault="))).toBe(false);
+  });
+
   it("returns empty array for empty string", () => {
     expect(parseRunString("")).toEqual([]);
     expect(parseRunString("   ")).toEqual([]);
@@ -56,7 +61,6 @@ describe("parseRunString", () => {
 describe("makeCleanSession", () => {
   it("returns a fresh state with nulls", () => {
     const s = makeCleanSession();
-    expect(s.vault).toBeNull();
     expect(s.lastCommand).toBeNull();
     expect(s.ctx).toBeUndefined();
   });
@@ -64,7 +68,7 @@ describe("makeCleanSession", () => {
   it("returns independent objects on each call", () => {
     const a = makeCleanSession();
     const b = makeCleanSession();
-    a.vault = "Personal";
-    expect(b.vault).toBeNull();
+    a.lastCommand = "daily:read";
+    expect(b.lastCommand).toBeNull();
   });
 });

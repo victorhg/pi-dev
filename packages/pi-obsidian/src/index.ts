@@ -2,19 +2,19 @@
  * @victorhg/pi-obsidian
  *
  * Obsidian vault tools for the Pi coding agent.
- * Registers a single `obsidian` tool that runs any Obsidian CLI command,
- * plus `/obsidian:*` commands for common vault interactions.
+ * Designed to run inside an Obsidian vault directory — the CLI auto-detects
+ * the vault from cwd, so no vault targeting is required.
  *
  * Requirements:
  *   - Obsidian 1.12+ with CLI enabled (Settings → General → Command line interface)
  *   - The `obsidian` binary registered in PATH
  *   - Obsidian desktop app must be running
+ *   - pi must be launched from inside the vault directory
  */
 
 import type {
   ExtensionAPI,
   ExtensionContext,
-  ExtensionCommandContext,
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { execFile } from "node:child_process";
@@ -25,7 +25,6 @@ const execFileAsync = promisify(execFile);
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ObsidianSessionState {
-  vault: string | null;
   lastCommand: string | null;
   ctx: ExtensionContext | undefined;
 }
@@ -33,7 +32,7 @@ export interface ObsidianSessionState {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function makeCleanSession(): ObsidianSessionState {
-  return { vault: null, lastCommand: null, ctx: undefined };
+  return { lastCommand: null, ctx: undefined };
 }
 
 /**
@@ -63,8 +62,8 @@ export function parseRunString(run: string): string[] {
 }
 
 /**
- * Run an Obsidian CLI command.
- * Returns stdout on success, throws with stderr on non-zero exit.
+ * Run an Obsidian CLI command from the current working directory.
+ * The CLI resolves the vault from cwd automatically.
  */
 export async function runObsidianCLI(
   args: string[],
@@ -79,7 +78,7 @@ export async function runObsidianCLI(
 
 /**
  * Check whether the `obsidian` binary is available and reachable.
- * Returns null on success, or an error string.
+ * Returns null on success, or an error message string.
  */
 export async function checkObsidianAvailable(): Promise<string | null> {
   try {
@@ -90,7 +89,7 @@ export async function checkObsidianAvailable(): Promise<string | null> {
   }
 }
 
-// ── Session state (module-level, re-hydrated on session_start) ────────────────
+// ── Session state ─────────────────────────────────────────────────────────────
 
 let session: ObsidianSessionState = makeCleanSession();
 
@@ -99,26 +98,18 @@ function resetSession(ctx?: ExtensionContext): void {
   if (ctx) session.ctx = ctx;
 }
 
-const SESSION_STATE_TYPE = "pi-obsidian-state";
-
-function persistState(): void {
-  // Only save vault preference (ctx is non-serialisable)
-  // appendEntry is called from outside the activate closure via the `pi` reference
-}
-
-// ── Prompt injected into the agent system prompt ─────────────────────────────
+// ── System prompt guidelines ──────────────────────────────────────────────────
 
 const OBSIDIAN_GUIDELINES = `
 ## Obsidian Vault Tool
 
-You have access to the \`obsidian\` tool which runs Obsidian CLI commands against the user's vault.
+You have access to the \`obsidian\` tool which runs Obsidian CLI commands against the vault in the current directory.
 
 ### Tool Usage
-- Use \`obsidian\` with a \`run\` parameter containing the full CLI command string.
-- Optionally pass \`vault\` to target a specific vault by name.
-- All CLI parameters use \`key=value\` syntax; quote values with spaces: \`content="hello world"\`.
+Use \`obsidian\` with a \`run\` parameter containing the full CLI command string.
+All parameters use \`key=value\` syntax; quote values with spaces: \`content="hello world"\`.
 
-### Common Patterns
+### Common Commands
 - **Read a note:** \`run="read file=<name>"\`
 - **Search vault:** \`run="search query=<text> format=json"\`
 - **Create a note:** \`run="create path=<folder/name> content=<text>"\`
@@ -131,8 +122,7 @@ You have access to the \`obsidian\` tool which runs Obsidian CLI commands agains
 
 ### Guidelines
 - Prefer \`format=json\` when you need to process structured output.
-- Use \`file=<name>\` for wikilink-style resolution; \`path=<vault/relative/path.md>\` for exact paths.
-- When the vault is ambiguous, ask the user which vault to target.
+- Use \`file=<name>\` for wikilink-style resolution; \`path=<relative/path.md>\` for exact paths.
 - Never use \`delete permanent\` without explicit user confirmation.
 `.trim();
 
@@ -140,15 +130,8 @@ You have access to the \`obsidian\` tool which runs Obsidian CLI commands agains
 
 export default async function activate(pi: ExtensionAPI): Promise<void> {
 
-  // ── Re-hydrate state on session start ─────────────────────────────────────
   pi.on("session_start", (_event, ctx) => {
     resetSession(ctx);
-    for (const entry of ctx.sessionManager.getBranch()) {
-      if (entry.type === "custom" && entry.customType === SESSION_STATE_TYPE) {
-        const saved = entry.data as { vault?: string | null } | undefined;
-        if (saved?.vault != null) session.vault = saved.vault;
-      }
-    }
   });
 
   pi.on("session_shutdown", () => {
@@ -156,10 +139,8 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
   });
 
   // ── Inject guidelines into system prompt ──────────────────────────────────
-  pi.on("before_agent_start", (_event, _ctx) => {
-    return {
-      systemPrompt: _event.systemPrompt + "\n\n" + OBSIDIAN_GUIDELINES,
-    };
+  pi.on("before_agent_start", (event, _ctx) => {
+    return { systemPrompt: event.systemPrompt + "\n\n" + OBSIDIAN_GUIDELINES };
   });
 
   // ── Tool: obsidian ─────────────────────────────────────────────────────────
@@ -167,33 +148,24 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
     name: "obsidian",
     label: "Obsidian",
     description:
-      "Run any Obsidian CLI command against the vault. " +
-      "Pass the full command string as `run`, e.g. `read file=MyNote` or `search query=roadmap format=json`. " +
-      "Optionally pass `vault` to target a specific vault by name.",
+      "Run any Obsidian CLI command against the vault in the current directory. " +
+      "Pass the full command string as `run`, e.g. `read file=MyNote` or `search query=roadmap format=json`.",
     promptSnippet: "Run Obsidian CLI commands (read, write, search, tasks, properties, daily notes, and more)",
     parameters: Type.Object({
       run: Type.String({
         description:
           'Full Obsidian CLI command string, e.g. "read file=MyNote" or "search query=roadmap limit=10 format=json"',
       }),
-      vault: Type.Optional(
-        Type.String({
-          description: "Target vault name. Defaults to the active vault.",
-        })
-      ),
     }),
 
     async execute(_toolCallId, params, _signal, onUpdate, _ctx) {
-      const run = params.run.trim();
-      const vault = params.vault ?? session.vault ?? undefined;
-
-      // Build argv
-      const cliArgs: string[] = [];
-      if (vault) cliArgs.push(`vault=${vault}`);
-      cliArgs.push(...parseRunString(run));
-
+      const cliArgs = parseRunString(params.run.trim());
       session.lastCommand = cliArgs.join(" ");
-      onUpdate?.({ details: {}, content: [{ type: "text", text: `Running: obsidian ${session.lastCommand}` }] });
+
+      onUpdate?.({
+        details: {},
+        content: [{ type: "text", text: `Running: obsidian ${session.lastCommand}` }],
+      });
 
       let output: string;
       try {
@@ -214,90 +186,9 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
     },
   });
 
-  // ── Command: /obsidian:vault ───────────────────────────────────────────────
-  pi.registerCommand("obsidian:vault", {
-    description: "Set or show the default Obsidian vault for this session",
-    handler: async (args, ctx) => {
-      const name = args.trim();
-      if (!name) {
-        if (session.vault) {
-          ctx.ui.notify(`Current vault: "${session.vault}"`, "info");
-        } else {
-          ctx.ui.notify("No vault set — using Obsidian's active vault.", "info");
-        }
-        return;
-      }
-      session.vault = name;
-      pi.appendEntry(SESSION_STATE_TYPE, { vault: name });
-      ctx.ui.notify(`Vault set to "${name}"`, "info");
-    },
-  });
-
-  // ── Command: /obsidian:search ──────────────────────────────────────────────
-  pi.registerCommand("obsidian:search", {
-    description: "Search the vault and show results",
-    handler: async (args, ctx) => {
-      const query = args.trim();
-      if (!query) {
-        ctx.ui.notify("Usage: /obsidian:search <query>", "warning");
-        return;
-      }
-
-      ctx.ui.notify(`Searching vault for "${query}"…`, "info");
-      const cliArgs = buildArgs(`search query="${query}" format=json`);
-      let output: string;
-      try {
-        output = await runObsidianCLI(cliArgs);
-      } catch (err) {
-        ctx.ui.notify(`Search failed: ${err}`, "error");
-        return;
-      }
-
-      let files: string[];
-      try {
-        files = JSON.parse(output) as string[];
-      } catch {
-        // Plain-text fallback
-        files = output.split("\n").filter(Boolean);
-      }
-
-      if (files.length === 0) {
-        ctx.ui.notify(`No results for "${query}"`, "info");
-        return;
-      }
-
-      const chosen = await ctx.ui.select(
-        `Search results for "${query}"`,
-        files
-      );
-      if (chosen) {
-        pi.sendUserMessage(`Read the note at path "${chosen}" from the Obsidian vault and summarise it.`);
-      }
-    },
-  });
-
-  // ── Command: /obsidian:daily ───────────────────────────────────────────────
-  pi.registerCommand("obsidian:daily", {
-    description: "Read today's daily note",
-    handler: async (_args, ctx) => {
-      ctx.ui.notify("Reading daily note…", "info");
-      const cliArgs = buildArgs("daily:read");
-      let output: string;
-      try {
-        output = await runObsidianCLI(cliArgs);
-      } catch (err) {
-        ctx.ui.notify(`Failed to read daily note: ${err}`, "error");
-        return;
-      }
-      pi.sendUserMessage(
-        `Here is today's Obsidian daily note:\n\n${output}\n\nPlease summarise the key points and any open tasks.`
-      );
-    },
-  });
-
   // ── Command: /obsidian:status ──────────────────────────────────────────────
   pi.registerCommand("obsidian:status", {
-    description: "Show vault info and verify the Obsidian CLI is reachable",
+    description: "Verify the Obsidian CLI is reachable and show current vault info",
     handler: async (_args, ctx) => {
       const err = await checkObsidianAvailable();
       if (err) {
@@ -308,25 +199,20 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
         return;
       }
 
-      const cliArgs = buildArgs("vault");
       let vaultInfo = "(unknown)";
       try {
-        vaultInfo = await runObsidianCLI(cliArgs);
+        vaultInfo = await runObsidianCLI(["vault"]);
       } catch { /* non-fatal */ }
 
-      const lines = [
-        "✅ Obsidian CLI is reachable",
-        "",
-        vaultInfo,
-        "",
-        session.vault
-          ? `Session vault: "${session.vault}"`
-          : "Session vault: (using active vault)",
-        session.lastCommand
-          ? `Last command: obsidian ${session.lastCommand}`
-          : "Last command: (none)",
-      ];
-      ctx.ui.notify(lines.join("\n"), "info");
+      ctx.ui.notify(
+        [
+          "✅ Obsidian CLI is reachable",
+          "",
+          vaultInfo,
+          session.lastCommand ? `Last command: obsidian ${session.lastCommand}` : "",
+        ].filter(Boolean).join("\n"),
+        "info"
+      );
     },
   });
 
@@ -336,47 +222,97 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
     handler: async (args, ctx) => {
       const name = args.trim();
       if (!name) {
-        ctx.ui.notify("Usage: /obsidian:note <note name or path>", "warning");
+        ctx.ui.notify("Usage: /obsidian:note <note name>", "warning");
         return;
       }
 
       ctx.ui.notify(`Reading "${name}"…`, "info");
-      // Try file= first (wikilink resolution), fall back to path=
-      const cliArgs = buildArgs(`read file="${name}"`);
       let output: string;
       try {
-        output = await runObsidianCLI(cliArgs);
+        output = await runObsidianCLI(parseRunString(`read file="${name}"`));
       } catch (err) {
         ctx.ui.notify(`Could not read note: ${err}`, "error");
         return;
       }
 
+      pi.sendUserMessage(`Here is the content of the Obsidian note "${name}":\n\n${output}`);
+    },
+  });
+
+  // ── Command: /obsidian:search ──────────────────────────────────────────────
+  pi.registerCommand("obsidian:search", {
+    description: "Search the vault — pick a result to load it into context",
+    handler: async (args, ctx) => {
+      const query = args.trim();
+      if (!query) {
+        ctx.ui.notify("Usage: /obsidian:search <query>", "warning");
+        return;
+      }
+
+      ctx.ui.notify(`Searching for "${query}"…`, "info");
+      let output: string;
+      try {
+        output = await runObsidianCLI(parseRunString(`search query="${query}" format=json`));
+      } catch (err) {
+        ctx.ui.notify(`Search failed: ${err}`, "error");
+        return;
+      }
+
+      let files: string[];
+      try {
+        files = JSON.parse(output) as string[];
+      } catch {
+        files = output.split("\n").filter(Boolean);
+      }
+
+      if (files.length === 0) {
+        ctx.ui.notify(`No results for "${query}"`, "info");
+        return;
+      }
+
+      const chosen = await ctx.ui.select(`Results for "${query}"`, files);
+      if (chosen) {
+        pi.sendUserMessage(`Read the Obsidian note at path "${chosen}" and summarise it.`);
+      }
+    },
+  });
+
+  // ── Command: /obsidian:daily ───────────────────────────────────────────────
+  pi.registerCommand("obsidian:daily", {
+    description: "Read today's daily note and summarise it",
+    handler: async (_args, ctx) => {
+      ctx.ui.notify("Reading daily note…", "info");
+      let output: string;
+      try {
+        output = await runObsidianCLI(["daily:read"]);
+      } catch (err) {
+        ctx.ui.notify(`Failed to read daily note: ${err}`, "error");
+        return;
+      }
       pi.sendUserMessage(
-        `Here is the content of the Obsidian note "${name}":\n\n${output}`
+        `Here is today's Obsidian daily note:\n\n${output}\n\nSummarise the key points and highlight any open tasks.`
       );
     },
   });
 
   // ── Command: /obsidian:tasks ───────────────────────────────────────────────
   pi.registerCommand("obsidian:tasks", {
-    description: "List open tasks across the vault (or from today's daily note)",
-    handler: async (args, ctx) => {
-      const scope = args.trim(); // "" | "daily"
-      const cmdStr = scope === "daily" ? "tasks daily todo" : "tasks todo";
-      const label = scope === "daily" ? "today's daily note" : "the vault";
+    description: "List open tasks from the vault. Pass `daily` to scope to today's note",
+    handler: async (args, _ctx) => {
+      const daily = args.trim() === "daily";
+      const cmdStr = daily ? "tasks daily todo" : "tasks todo";
+      const label = daily ? "today's daily note" : "the vault";
 
-      ctx.ui.notify(`Fetching open tasks from ${label}…`, "info");
-      const cliArgs = buildArgs(cmdStr);
       let output: string;
       try {
-        output = await runObsidianCLI(cliArgs);
+        output = await runObsidianCLI(parseRunString(cmdStr));
       } catch (err) {
-        ctx.ui.notify(`Failed to fetch tasks: ${err}`, "error");
+        session.ctx?.ui.notify(`Failed to fetch tasks: ${err}`, "error");
         return;
       }
 
       if (!output) {
-        ctx.ui.notify(`No open tasks found in ${label}.`, "info");
+        session.ctx?.ui.notify(`No open tasks found in ${label}.`, "info");
         return;
       }
 
@@ -385,13 +321,4 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
       );
     },
   });
-
-  // ── Helpers (closure) ─────────────────────────────────────────────────────
-
-  function buildArgs(run: string): string[] {
-    const args: string[] = [];
-    if (session.vault) args.push(`vault=${session.vault}`);
-    args.push(...parseRunString(run));
-    return args;
-  }
 }
