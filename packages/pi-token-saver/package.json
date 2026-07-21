@@ -24,11 +24,13 @@
   "scripts": {
     "build": "tsc",
     "build:self": "tsc",
-    "check:self": "tsc --noEmit"
+    "check:self": "tsc --noEmit",
+    "test:self": "vitest run"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.80.6"

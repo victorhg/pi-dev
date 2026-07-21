@@ -10,10 +10,19 @@ export interface Filter {
   apply: (command: string, output: string) => FilterResult;
 }
 
-// ── Strip ANSI Helper ─────────────────────────────────────────────
+// ── Strip ANSI & Redact Secrets Helpers ───────────────────────────
 export const stripAnsiText = (text: string): string => {
   return text.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
              .replace(/\x1b\]8;;[^\x1b]*\x1b\\/g, ''); // Hyperlinks
+};
+
+export const redactSecrets = (text: string): string => {
+  return text
+    .replace(/sk-[a-zA-Z0-9\-]{20,}/g, 'sk-[REDACTED]')
+    .replace(/ghp_[a-zA-Z0-9]{36}/g, 'ghp_[REDACTED]')
+    .replace(/github_pat_[a-zA-Z0-9_]{22,}/g, 'github_pat_[REDACTED]')
+    .replace(/Bearer\s+[a-zA-Z0-9\-\._~\+\/]+=*/gi, 'Bearer [REDACTED]')
+    .replace(/(api[_-]?key|password|secret|auth[_-]?token)\s*[:=]\s*["']?[a-zA-Z0-9_\-\.]{8,}["']?/gi, '$1=[REDACTED]');
 };
 
 // ── Generic Fallback Line Truncator ──────────────────────────────
@@ -399,7 +408,6 @@ export function createLsFilter(): Filter {
       const isTree = /^tree\b/.test(command) || /[├└│──]/.test(raw);
 
       if (isFind || isTree) {
-        // Group by directories
         const groups = new Map<string, string[]>();
         let totalFiles = 0;
 
@@ -408,7 +416,6 @@ export function createLsFilter(): Filter {
           if (!p || p === ".") continue;
           if (p.startsWith("./")) p = p.slice(2);
 
-          // Skip noise paths
           if (p.split("/").some(s => NOISE_DIRS.has(s))) continue;
 
           const lastSlash = p.lastIndexOf("/");
@@ -443,19 +450,16 @@ export function createLsFilter(): Filter {
         const filtered = outLines.join("\n");
         return { filtered, rawChars, filteredChars: filtered.length };
       } else {
-        // Standard ls -la
         const entries: Array<{ name: string; isDir: boolean; size: number }> = [];
         for (const line of lines) {
           if (/^total\s+\d+/.test(line) || line.trim() === "") continue;
 
-          // ls -la file
           const fileMatch = line.match(/^[-l](?:[rwxsStT-]{9})\s+\d+\s+\S+\s+\S+\s+(\d+)\s+\w+\s+\d+\s+[\d:]+\s+(.+)$/);
           if (fileMatch) {
             entries.push({ name: fileMatch[2].trim(), isDir: false, size: parseInt(fileMatch[1], 10) });
             continue;
           }
 
-          // ls -la dir
           const dirMatch = line.match(/^d(?:[rwxsStT-]{9})\s+\d+\s+\S+\s+\S+\s+\d+\s+\w+\s+\d+\s+[\d:]+\s+(.+)$/);
           if (dirMatch) {
             const name = dirMatch[1].trim();
@@ -465,7 +469,6 @@ export function createLsFilter(): Filter {
             continue;
           }
 
-          // simple listing
           const name = line.trim();
           if (name && name !== "." && name !== "..") {
             entries.push({ name, isDir: false, size: -1 });
@@ -513,7 +516,6 @@ export function createNpmInstallFilter(): Filter {
       let count: number | null = null;
       let duration: string | null = null;
 
-      // Extractor matchers
       const countMatch = clean.match(/added\s+(\d+)\s+packages/i) || clean.match(/(\d+)\s+packages?\s+installed/i) || clean.match(/Packages:\s*\+(\d+)/);
       if (countMatch) count = parseInt(countMatch[1], 10);
 
@@ -527,7 +529,6 @@ export function createNpmInstallFilter(): Filter {
         parts.push(`ok ✓ install completed${duration ? ` (${duration})` : ""}`);
       }
 
-      // Preserve vulnerabilities
       const vulns = clean.split("\n")
         .map(l => l.trim())
         .filter(l => /vulnerabilit|npm\s+audit|security\s+audit|deprecated/i.test(l));
@@ -617,6 +618,77 @@ export function createGrepFilter(): Filter {
   };
 }
 
+// ── 7. Smart Test Runner Filter (pytest, cargo test, go test) ─────
+export function createTestRunnerFilter(): Filter {
+  return {
+    name: "test-runner",
+    matches: (command: string) => /^(pytest|cargo\s+test|go\s+test|vitest|jest|npm\s+test|pnpm\s+test)\b/.test(command),
+    apply: (command: string, raw: string): FilterResult => {
+      const rawChars = raw.length;
+      const clean = stripAnsiText(raw);
+      const lines = clean.split("\n");
+
+      const failures: string[] = [];
+      let summary = "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (/^(FAIL|FAILED|ERROR|ERR!|×|✖)/i.test(trimmed) || /FAILURES|ERRORS/i.test(trimmed)) {
+          failures.push(trimmed);
+        } else if (/(\d+)\s+passed|PASSED|ok|(\d+)\s+failed/i.test(trimmed)) {
+          if (trimmed.length < 80) summary = trimmed;
+        }
+      }
+
+      const output: string[] = [];
+      if (summary) output.push(`📊 ${summary}`);
+      if (failures.length > 0) {
+        output.push(`\n❌ Failures / Errors (${failures.length}):`);
+        output.push(...failures.slice(0, 15));
+        if (failures.length > 15) output.push(`... +${failures.length - 15} more failure lines`);
+      } else {
+        output.push("✅ All tests passed successfully.");
+      }
+
+      const filtered = output.join("\n");
+      return { filtered, rawChars, filteredChars: filtered.length };
+    }
+  };
+}
+
+// ── 8. Smart Build & Compiler Filter (cargo, go, make, tsc) ──────
+export function createBuildFilter(): Filter {
+  return {
+    name: "build",
+    matches: (command: string) => /^(cargo\s+build|go\s+build|make|cmake|tsc|npm\s+run\s+build|pnpm\s+build)\b/.test(command),
+    apply: (command: string, raw: string): FilterResult => {
+      const rawChars = raw.length;
+      const clean = stripAnsiText(raw);
+      const lines = clean.split("\n");
+
+      const issues: string[] = [];
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (/\b(error|warning|err!|fail)\b/i.test(trimmed)) {
+          issues.push(trimmed);
+        }
+      }
+
+      const output: string[] = [];
+      if (issues.length > 0) {
+        output.push(`⚠️ Build warnings / errors (${issues.length}):`);
+        output.push(...issues.slice(0, 20));
+        if (issues.length > 20) output.push(`... +${issues.length - 20} more issues`);
+      } else {
+        output.push("✅ Build completed successfully with no errors or warnings.");
+      }
+
+      const filtered = output.join("\n");
+      return { filtered, rawChars, filteredChars: filtered.length };
+    }
+  };
+}
+
 // ── Filter Engine Class ───────────────────────────────────────────
 export class FilterEngine {
   private filters: Filter[] = [
@@ -625,7 +697,9 @@ export class FilterEngine {
     createGitLogFilter(),
     createLsFilter(),
     createNpmInstallFilter(),
-    createGrepFilter()
+    createGrepFilter(),
+    createTestRunnerFilter(),
+    createBuildFilter()
   ];
 
   findFilter(command: string): Filter | null {
@@ -637,7 +711,7 @@ export class FilterEngine {
   }
 
   applyWithMetadata(command: string, output: string): { output: string; matched: boolean; filterName?: string } {
-    const cleanOutput = stripAnsiText(output);
+    const cleanOutput = redactSecrets(stripAnsiText(output));
     const filter = this.findFilter(command);
     if (!filter) {
       return { output: cleanOutput, matched: false };
@@ -645,7 +719,7 @@ export class FilterEngine {
 
     try {
       const result = filter.apply(command, cleanOutput);
-      return { output: result.filtered, matched: true, filterName: filter.name };
+      return { output: redactSecrets(result.filtered), matched: true, filterName: filter.name };
     } catch (err) {
       console.error(`[TokenSaver] Failed to apply filter ${filter.name}:`, err);
       return { output: cleanOutput, matched: false };
