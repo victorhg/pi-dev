@@ -42,6 +42,9 @@ To activate the extension, add it to your Pi configuration file:
 ## Features
 
 - **Semantic Compaction**: Parses raw outputs for Git commands, directory listings, search utilities, and installers to generate compact, highly semantic summaries instead of simple line truncation.
+- **Secret Redaction**: Automatically masks sensitive keys (OpenAI, GitHub, AWS, Bearer tokens, API keys) before output reaches the LLM context.
+- **Tier-2 Test Runner Filter**: Aggregates pass/fail counts for test runners (`pytest`, `cargo test`, `vitest`, `jest`, etc.) and isolates failure traces.
+- **Tier-2 Build & Compiler Filter**: Strips compiler boilerplate, retaining only errors and warnings with file/line references.
 - **Tee Recovery System**: Automatically saves raw command output on failures (non-zero exits) to `~/.pi/agent/token-saver/tee/` and appends a hint line with the file path, so the agent can read full logs if needed.
 - **Safety Guards**: Automatically bypasses filtering for command chains (`&&`, `;`), output redirection (`>`), piping (`|`), binary payloads, or very short outputs.
 - **Persistent Analytics**: Tracks running token/byte savings across sessions inside a lightweight local JSON store (`~/.pi/agent/token-saver/savings.json`).
@@ -72,4 +75,6 @@ To view savings at any time, use the commands above. If `@victorhg/pi-footer` is
 | `git log` | Compact commit oneline view showing hash and truncated subject, limited to 20 lines. | ~90% |
 | `ls` / `find` / `fd` / `tree` | High-noise directory filtering (`node_modules`, etc.), directory file counts, and extension overview. | ~80% |
 | `rg` / `grep` | File-grouped matching with match caps and file summary. | ~80% |
+| `pytest` / `cargo test` / `jest` / etc. | Aggregates pass/fail counts, isolates failure traces and errors. | ~90% |
+| `cargo build` / `go build` / `tsc` / etc. | Strips boilerplate, retains error/warning lines with file references. | ~90% |
 | `npm` / `pnpm` / `yarn` / `bun` install | Single success summary line preserving warnings/errors and vulnerabilities. | ~90% |
