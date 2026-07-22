@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
-    "@earendil-works/pi-tui": "file:../../node_modules/.pnpm/@earendil-works+pi-tui@0.80.10/node_modules/@earendil-works/pi-tui",
+    "@earendil-works/pi-tui": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui",
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0",
     "vitest": "^1.0.0"
