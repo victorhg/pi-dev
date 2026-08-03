@@ -13,14 +13,15 @@ All packages below can be installed individually via `pi install @victorhg/<name
 | `@victorhg/pi-token-saver` | Intelligent bash output filtering to reduce token consumption. | optional — shows `💰xKB` savings metric |
 | `@victorhg/pi-auto-compact` | Context window manager with threshold alerts and auto-compaction. | optional — shows `📦N` / `⚠️📦` indicator |
 | `@victorhg/pi-no-bash` | Capability reduction — intercepts and blocks bash tool calls. | — |
+| `@victorhg/pi-web-quality` | Automated web quality assurance (a11y, performance, SEO, semantics). | optional — shows `🌐` health badge |
 | `@victorhg/pi-last-session` | Session context persistence — save, restore, and inspect previous sessions. | — |
 
 ### Footer integration dependency
 
-`pi-auto-compact` and `pi-token-saver` both declare `@victorhg/pi-footer` as an
+`pi-auto-compact`, `pi-token-saver`, and `pi-web-quality` all declare `@victorhg/pi-footer` as an
 `optionalDependency`. Footer registration is attempted at startup and silently
 skipped if `pi-footer` is not installed. To enable the status bar indicators,
-install `pi-footer` alongside either package.
+install `pi-footer` alongside them.
 
 ## Root bundle
 
@@ -34,6 +35,7 @@ All other packages are available individually but require an explicit install.
 | `@victorhg/pi-footer` | ✅ | Required for full status bar integration with auto-compact and token-saver |
 | `@victorhg/pi-token-saver` | ✅ | Reduces token cost on every session — on-by-default value |
 | `@victorhg/pi-auto-compact` | ✅ | Prevents silent context overflow — on-by-default safety net |
+| `@victorhg/pi-web-quality` | ✅ | Real-time web quality assurance and health monitoring |
 | `@victorhg/pi-no-bash` | ❌ | Opt-in only — breaks workflows that depend on bash |
 | `@victorhg/pi-last-session` | ❌ | Opt-in only — requires deliberate session management workflow |
 

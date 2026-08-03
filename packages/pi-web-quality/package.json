@@ -1,0 +1,45 @@
+{
+  "name": "@victorhg/pi-web-quality",
+  "version": "0.1.0",
+  "description": "Automated web quality assurance (a11y, performance, SEO, semantic HTML) for the Pi coding agent",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "keywords": [
+    "pi-package",
+    "web-quality",
+    "accessibility",
+    "seo",
+    "performance"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "build:self": "tsc",
+    "build": "tsc",
+    "check:self": "tsc --noEmit",
+    "test:self": "vitest run"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "optionalDependencies": {
+    "@victorhg/pi-footer": "workspace:*"
+  }
+}

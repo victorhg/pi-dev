@@ -79,6 +79,7 @@ This monorepo contains several curated packages for the Pi environment:
 - **[@victorhg/pi-themes](./packages/pi-themes/README.md)**: Curated themes and styling assets for the Pi environment.
 - **[@victorhg/pi-token-saver](./packages/pi-token-saver/README.md)**: Intelligent bash output filtering to reduce token consumption. Optionally integrates with `pi-footer` for live savings metrics.
 - **[@victorhg/pi-auto-compact](./packages/pi-auto-compact/README.md)**: Context window manager with threshold alerts, auto-compaction triggers, and footer status integration. Optionally integrates with `pi-footer` for live usage metrics.
+- **[@victorhg/pi-web-quality](./packages/pi-web-quality/README.md)**: Automated web quality assurance (a11y, performance, SEO, semantics). Optionally integrates with `pi-footer` for live health metrics.
 
 > **Root bundle:** The root `package.json` declares the default distribution bundle — the packages installed when using `my-pi` out of the box. All packages are available individually via `pi install`.
 
