@@ -1,0 +1,46 @@
+{
+  "name": "@victorhg/pi-sec-quality",
+  "version": "0.1.0",
+  "description": "Automated security assurance and vulnerability scanning (OWASP Top 10, secret detection, API safety) for the Pi coding agent",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "keywords": [
+    "pi-package",
+    "sec-quality",
+    "security",
+    "owasp",
+    "secrets",
+    "sast"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "build:self": "tsc",
+    "build": "tsc",
+    "check:self": "tsc --noEmit",
+    "test:self": "vitest run"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "optionalDependencies": {
+    "@victorhg/pi-footer": "workspace:*"
+  }
+}

@@ -14,11 +14,12 @@ All packages below can be installed individually via `pi install @victorhg/<name
 | `@victorhg/pi-auto-compact` | Context window manager with threshold alerts and auto-compaction. | optional — shows `📦N` / `⚠️📦` indicator |
 | `@victorhg/pi-no-bash` | Capability reduction — intercepts and blocks bash tool calls. | — |
 | `@victorhg/pi-web-quality` | Automated web quality assurance (a11y, performance, SEO, semantics). | optional — shows `🌐` health badge |
+| `@victorhg/pi-sec-quality` | Automated security auditing and vulnerability scanning. | optional — shows `🛡️` security badge |
 | `@victorhg/pi-last-session` | Session context persistence — save, restore, and inspect previous sessions. | — |
 
 ### Footer integration dependency
 
-`pi-auto-compact`, `pi-token-saver`, and `pi-web-quality` all declare `@victorhg/pi-footer` as an
+`pi-auto-compact`, `pi-token-saver`, `pi-web-quality`, and `pi-sec-quality` all declare `@victorhg/pi-footer` as an
 `optionalDependency`. Footer registration is attempted at startup and silently
 skipped if `pi-footer` is not installed. To enable the status bar indicators,
 install `pi-footer` alongside them.
@@ -36,6 +37,7 @@ All other packages are available individually but require an explicit install.
 | `@victorhg/pi-token-saver` | ✅ | Reduces token cost on every session — on-by-default value |
 | `@victorhg/pi-auto-compact` | ✅ | Prevents silent context overflow — on-by-default safety net |
 | `@victorhg/pi-web-quality` | ✅ | Real-time web quality assurance and health monitoring |
+| `@victorhg/pi-sec-quality` | ✅ | Real-time web security assurance and vulnerability scanning |
 | `@victorhg/pi-no-bash` | ❌ | Opt-in only — breaks workflows that depend on bash |
 | `@victorhg/pi-last-session` | ❌ | Opt-in only — requires deliberate session management workflow |
 
