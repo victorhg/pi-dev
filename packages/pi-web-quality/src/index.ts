@@ -223,7 +223,7 @@ export default async function activate(pi: ExtensionAPI) {
 
   // Register custom tool: web_quality:audit
   pi.registerTool({
-    name: "web_quality:audit",
+    name: "web_quality_audit",
     label: "Web Quality Audit",
     description: "Run an automated web quality audit (a11y, performance, SEO, semantics) on files or workspace code.",
     promptSnippet: "Audit web code quality, accessibility, performance, and SEO",

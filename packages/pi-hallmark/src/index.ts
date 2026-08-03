@@ -68,9 +68,9 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
     resetSession();
   });
 
-  // ── Custom Tool: hallmark:audit ──────────────────────────────────────────
+  // ── Custom Tool: hallmark_audit ──────────────────────────────────────────
   pi.registerTool({
-    name: "hallmark:audit",
+    name: "hallmark_audit",
     label: "Hallmark Design Audit",
     description: "Audit HTML/CSS/JSX code against Hallmark's 57 slop-test gates and anti-pattern checklist.",
     promptSnippet: "Audit design code for anti-AI-slop compliance and score on 6 critique axes.",
@@ -113,9 +113,9 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
     },
   });
 
-  // ── Custom Tool: hallmark:generate ─────────────────────────────────────────
+  // ── Custom Tool: hallmark_generate ─────────────────────────────────────────
   pi.registerTool({
-    name: "hallmark:generate",
+    name: "hallmark_generate",
     label: "Hallmark Design Generator",
     description: "Pick anti-slop macrostructure, theme, and tokens for a project brief.",
     promptSnippet: "Generate anti-slop design system tokens, macrostructure, and layout rhythm for a brief.",
@@ -172,9 +172,9 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
     },
   });
 
-  // ── Custom Tool: hallmark:study ────────────────────────────────────────────
+  // ── Custom Tool: hallmark_study ────────────────────────────────────────────
   pi.registerTool({
-    name: "hallmark:study",
+    name: "hallmark_study",
     label: "Hallmark Design DNA Study",
     description: "Extract design DNA (macrostructure, color anchor, fonts, archetypes) from a URL or design reference.",
     promptSnippet: "Study design reference to extract visual DNA without copying pixels.",
