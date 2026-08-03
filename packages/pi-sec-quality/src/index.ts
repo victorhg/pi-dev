@@ -239,7 +239,7 @@ export default async function activate(pi: ExtensionAPI) {
 
   // Register custom tool: sec_quality:audit
   pi.registerTool({
-    name: "sec_quality:audit",
+    name: "sec_quality_audit",
     label: "Security Audit",
     description: "Run an automated security audit (OWASP Top 10, secret detection, XSS, API security) on files or workspace code.",
     promptSnippet: "Audit codebase for security vulnerabilities, secret leaks, and API safety",
