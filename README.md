@@ -71,7 +71,7 @@ For production or standard usage, use the `pi install` command:
 
 This monorepo contains several curated packages for the Pi environment:
 
-- **[@victorhg/pi-hallmark](./packages/pi-hallmark/README.md)**: Design skill to enforce anti-AI-slop design principles and perform design audits on generated code.
+- **[@victorhg/pi-hallmark](./packages/pi-hallmark/README.md)**: Anti-AI-slop design skill and extension for greenfield pages, audits, redesigns, and design extraction with 105 reference guides.
 - **[@victorhg/pi-obsidian](./packages/pi-obsidian/README.md)**: Obsidian vault tools for the Pi coding agent — read, search, create, and manage notes via the Obsidian CLI. Registers a single `obsidian` tool and `/obsidian:*` commands for common vault interactions.
 - **[@victorhg/pi-research](./packages/pi-research/README.md)**: Subject research and reference document generator. Type `/research` to open a dialog, describe a topic, and the agent runs a structured Planner → Researcher → Writer loop producing a citable Markdown document saved to `research/<slug>.md`.
 - **[@victorhg/pi-last-session](./packages/last-session/README.md)**: Manage session context across Pi coding sessions — compact, save, restore, and inspect previous work.

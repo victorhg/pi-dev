@@ -15,6 +15,7 @@
 		"@victorhg/pi-auto-compact": "workspace:*",
 		"@victorhg/pi-obsidian": "workspace:*",
 		"@victorhg/pi-web-quality": "workspace:*",
-		"@victorhg/pi-sec-quality": "workspace:*"
+		"@victorhg/pi-sec-quality": "workspace:*",
+		"@victorhg/pi-hallmark": "workspace:*"
 	}
 }

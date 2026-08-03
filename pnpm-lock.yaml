@@ -14,6 +14,9 @@ importers:
       '@victorhg/pi-footer':
         specifier: workspace:*
         version: link:packages/pi-footer
+      '@victorhg/pi-hallmark':
+        specifier: workspace:*
+        version: link:packages/pi-hallmark
       '@victorhg/pi-obsidian':
         specifier: workspace:*
         version: link:packages/pi-obsidian
@@ -85,6 +88,25 @@ importers:
       vitest:
         specifier: ^1.0.0
         version: 1.6.1(@types/node@20.19.43)
+
+  packages/pi-hallmark:
+    devDependencies:
+      '@earendil-works/pi-coding-agent':
+        specifier: file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent
+        version: file:../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent(ws@8.21.0)(zod@4.4.3)
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1(@types/node@20.19.43)
+    optionalDependencies:
+      '@victorhg/pi-footer':
+        specifier: workspace:*
+        version: link:../pi-footer
 
   packages/pi-no-bash:
     devDependencies:

@@ -1,11 +1,15 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "module": "commonjs",
-    "declaration": true,
-    "outDir": "./dist",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "strict": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "rootDir": "./src"
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.test.ts"]
 }

@@ -1,17 +1,49 @@
 {
   "name": "@victorhg/pi-hallmark",
   "version": "0.1.0",
-  "description": "Pi extension to enforce anti-AI-slop design principles.",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "test": "echo 'No tests yet'"
+  "description": "Anti-AI-slop design skill and extension for greenfield pages, audits, redesigns, and design extraction.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
   },
-  "dependencies": {
-    "@earendil-works/pi-coding-agent": "workspace:*"
+  "keywords": [
+    "pi-package",
+    "hallmark",
+    "design-system",
+    "anti-ai-slop",
+    "design-audit",
+    "macrostructures",
+    "ui-design"
+  ],
+  "files": [
+    "dist",
+    "references",
+    "SKILL.md",
+    "README.md",
+    "package.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "build:self": "tsc",
+    "build": "tsc",
+    "check:self": "tsc --noEmit",
+    "test:self": "vitest run"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.1.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "@earendil-works/pi-coding-agent": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "optionalDependencies": {
+    "@victorhg/pi-footer": "workspace:*"
   }
 }
