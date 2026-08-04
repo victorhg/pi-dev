@@ -1,6 +1,6 @@
 # pi-token-saver
 
-Intelligent bash output filtering to reduce token consumption.
+Intelligent bash output filtering, workspace file compression, and model cost auditing to reduce token consumption and API costs.
 
 ## Optional: Footer integration
 
@@ -50,6 +50,8 @@ To activate the extension, add it to your Pi configuration file:
 - **Persistent Analytics**: Tracks running token/byte savings across sessions inside a lightweight local JSON store (`~/.pi/agent/token-saver/savings.json`).
 - **Footer Integration**: Displays a `💰xKB` cumulative metric in the status bar (integrating with `@victorhg/pi-footer` if present).
 - **Passthrough Mode**: Bypass filtering for the next command whenever full original output is required.
+- **Workspace File Compression**: Scans workspace `.md` files (AGENTS.md, MEMORY.md, SOUL.md, etc.) and shows token savings from AI-efficient notation — these files are sent with *every* prompt so compressing them reduces costs on every API call.
+- **Model Audit**: Detects the current AI model, estimates monthly costs, and suggests cheaper alternatives with specific dollar savings.
 
 ## Commands
 
@@ -59,6 +61,8 @@ To activate the extension, add it to your Pi configuration file:
 | `token-saver:history` | Show a breakdown of the last 30 filtered commands with saved sizes. |
 | `token-saver:clear` | Purge persistent history and reset savings tracking. |
 | `token-saver:passthrough` | Bypass filtering for the next bash command (useful for debugging). |
+| `token-saver:compress` | Scan workspace `.md` files and show token savings from AI-efficient notation compression. |
+| `token-saver:audit` | Audit current AI model, estimate monthly costs, and suggest cheaper alternatives. |
 
 ## Usage
 
@@ -78,3 +82,20 @@ To view savings at any time, use the commands above. If `@victorhg/pi-footer` is
 | `pytest` / `cargo test` / `jest` / etc. | Aggregates pass/fail counts, isolates failure traces and errors. | ~90% |
 | `cargo build` / `go build` / `tsc` / etc. | Strips boilerplate, retains error/warning lines with file references. | ~90% |
 | `npm` / `pnpm` / `yarn` / `bun` install | Single success summary line preserving warnings/errors and vulnerabilities. | ~90% |
+
+### Workspace compression patterns
+
+The `token-saver:compress` command scans workspace `.md` files for verbose patterns and converts them to AI-efficient notation:
+
+- `When X, I should Y` → `X → Y`
+- `If X, then Y` → `X ? Y`
+- `in order to` → `to`
+- `as well as` → `&`
+- `due to the fact that` → `because`
+- `a wide variety of` → `various`
+- Collapses redundant filler phrases and bullet prefixes
+- File-type specific patterns for AGENTS.md, MEMORY.md, and USER.md
+
+### Model audit
+
+The `token-saver:audit` command detects the active model, estimates monthly cost based on typical coding-agent usage (15K input + 2K output tokens/turn, 50 turns/day), and suggests downgrade paths (e.g., Opus → Sonnet, GPT-4o → GPT-4o Mini) with dollar estimates.

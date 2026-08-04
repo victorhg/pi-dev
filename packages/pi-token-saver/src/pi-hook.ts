@@ -6,6 +6,8 @@ import type { ExtensionAPI, ToolCallEvent, ToolResultEvent, ExtensionContext, Ex
 import { isToolCallEventType, isBashToolResult } from "@earendil-works/pi-coding-agent";
 import { FilterEngine } from './filter-engine';
 import { SavingsTracker } from './savings-tracker';
+import { compressWorkspace, formatCompressReport } from './compressor';
+import { runAudit, formatAuditReport, type DetectedModel } from './model-audit';
 
 type TextContent = { type: 'text'; text: string };
 type ImageContent = { type: 'image'; data?: string };
@@ -60,6 +62,7 @@ export default async function activate(pi: ExtensionAPI) {
   const engine = new FilterEngine();
   const tracker = new SavingsTracker();
   let passthroughEnabled = false;
+  let currentModel: any = undefined;
 
   // Map for tracking pending command texts via toolCallId
   const pendingBashCommands = new Map<string, string>();
@@ -145,6 +148,48 @@ export default async function activate(pi: ExtensionAPI) {
       passthroughEnabled = true;
       if (ctx.hasUI) ctx.ui.notify("Passthrough mode enabled for the next command.", 'info');
     }
+  });
+
+  pi.registerCommand('token-saver:compress', {
+    description: 'Scan workspace .md files and show compression savings',
+    handler: async (args: string, ctx: ExtensionCommandContext) => {
+      const workspacePath = ctx.cwd;
+      const result = compressWorkspace(workspacePath);
+      const report = formatCompressReport(result, workspacePath);
+
+      if (ctx.hasUI) {
+        ctx.ui.notify(
+          result.files.length > 0
+            ? `📁 ${result.files.length} files: ${result.totalOriginalTokens.toLocaleString()} → ${result.totalCompressedTokens.toLocaleString()} tokens (${Math.round((result.totalTokensSaved / result.totalOriginalTokens) * 100)}% saving)`
+            : 'No compressible files found.',
+          'info',
+        );
+      } else {
+        console.log(report);
+      }
+    },
+  });
+
+  pi.registerCommand('token-saver:audit', {
+    description: 'Audit current AI model and suggest cheaper alternatives',
+    handler: async (args: string, ctx: ExtensionCommandContext) => {
+      const report = runAudit(currentModel || ctx.model);
+      const output = formatAuditReport(report);
+
+      if (ctx.hasUI) {
+        const summary = report.currentModel
+          ? `${report.currentModel.label} ~$${report.estimatedMonthlyCost.toFixed(2)}/mo${report.suggestions.length > 0 ? ` — ${report.suggestions.length} suggestion${report.suggestions.length === 1 ? '' : 's'}` : ''}`
+          : 'Model audit complete';
+        ctx.ui.notify(summary, 'info');
+      } else {
+        console.log(output);
+      }
+    },
+  });
+
+  // Track model changes for audit
+  pi.on('model_select', (event: any) => {
+    currentModel = event.model;
   });
 
   // ── Hook Pipeline ────────────────────────────────────────────────
