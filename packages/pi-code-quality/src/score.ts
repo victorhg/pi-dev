@@ -218,8 +218,8 @@ export const METRIC_SCORERS: Record<MetricId, MetricScorer> = {
 
 /**
  * Weighted aggregate over available metrics. Metrics with status
- * "unavailable" or "error" are excluded and the remaining weights
- * renormalized. Returns null when nothing is scoreable.
+ * "unavailable" are excluded and the remaining weights renormalized.
+ * Returns null when nothing is scoreable.
  */
 export function aggregateScores(
   scores: Partial<Record<MetricId, MetricScore>>,
@@ -231,7 +231,7 @@ export function aggregateScores(
   for (const id of METRIC_IDS) {
     const metric = scores[id];
     if (!metric) continue;
-    if (metric.status === "unavailable" || metric.status === "error") continue;
+    if (metric.status === "unavailable") continue;
     const weight = weights[id] ?? 0;
     if (weight <= 0) continue;
     weightedSum += metric.score * weight;

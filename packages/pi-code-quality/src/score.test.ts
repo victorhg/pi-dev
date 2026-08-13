@@ -236,12 +236,19 @@ describe("aggregateScores", () => {
     expect(aggregateScores(scores, weights)).toBe(71);
   });
 
-  it("excludes error-status metrics", () => {
+  it("includes bad (error-status) metrics but excludes unavailable", () => {
     const scores = {
       complexity: metricScore({ metric: "complexity", score: 80 }),
       slop: metricScore({ metric: "slop", score: 0, status: "error" }),
     };
-    expect(aggregateScores(scores, weights)).toBe(80);
+    // error-status metrics are real data (bad code) and count toward the score.
+    expect(aggregateScores(scores, weights)).toBe(57);
+
+    const withUnavailable = {
+      complexity: metricScore({ metric: "complexity", score: 80 }),
+      slop: metricScore({ metric: "slop", status: "unavailable", score: 0 }),
+    };
+    expect(aggregateScores(withUnavailable, weights)).toBe(80);
   });
 
   it("ignores zero-weight metrics", () => {

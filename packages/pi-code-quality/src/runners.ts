@@ -22,6 +22,12 @@ export interface RunOptions {
   resultFile?: string;
   /** Injectable file reader (test seam). Defaults to node:fs/promises readFile. */
   readFile?: (path: string) => Promise<string>;
+  /**
+   * Exit codes that are treated as success (default [0]). Detector tools
+   * (lizard, semgrep, gitleaks, bandit) exit 1 when findings exist, which is
+   * a successful run, not an error.
+   */
+  allowExitCodes?: number[];
 }
 
 export interface ExecResult {
@@ -64,7 +70,8 @@ export async function runTool(
 ): Promise<ExecResult> {
   const result = await exec(command, args, options);
 
-  if (result.code !== 0) {
+  const tolerated = options.allowExitCodes ?? [0];
+  if (!tolerated.includes(result.code)) {
     throw new ToolRunError(
       `Tool "${command}" exited with code ${result.code}`,
       result.code,

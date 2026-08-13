@@ -36,6 +36,24 @@ describe("runTool", () => {
     });
   });
 
+  it("treats allowed exit codes as success", async () => {
+    const leaky: ExecFn = async () => ({
+      stdout: "[{\"RuleID\": \"x\"}]",
+      stderr: "",
+      code: 1,
+    });
+    const res = await runTool(leaky, "gitleaks", ["detect"], { allowExitCodes: [0, 1] });
+    expect(res.code).toBe(1);
+    expect(res.stdout).toContain("RuleID");
+  });
+
+  it("throws when a non-allowed exit code occurs", async () => {
+    const broken: ExecFn = async () => ({ stdout: "", stderr: "config error", code: 2 });
+    await expect(runTool(broken, "semgrep", ["scan"], { allowExitCodes: [0, 1] })).rejects.toThrow(
+      ToolRunError,
+    );
+  });
+
   it("reads a result file into stdout when configured", async () => {
     const exec: ExecFn = async () => ({ stdout: "", stderr: "", code: 0 });
     const readFile = async () => '{"ok": true}';

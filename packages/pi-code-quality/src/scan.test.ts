@@ -1,0 +1,126 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import {
+  listProjectFiles,
+  computeFileSpaghetti,
+  runScan,
+  type ScanDeps,
+} from "./scan.js";
+import type { ExecFn, WhichFn } from "./runners.js";
+import type { LizardFunction } from "./normalize.js";
+
+function fixture(name: string): string {
+  return readFileSync(fileURLToPath(new URL(`../test/fixtures/${name}`, import.meta.url)), "utf8");
+}
+
+const whichAll: WhichFn = (bin) =>
+  ["lizard", "jscpd", "semgrep", "gitleaks", "aislop"].includes(bin) ? `/usr/bin/${bin}` : null;
+
+const whichNone: WhichFn = () => null;
+
+function makeFixtureExec(): ExecFn {
+  return async (command) => {
+    switch (command) {
+      case "git":
+        return { stdout: "src/a.ts\0src/b.py\0package.json\0", stderr: "", code: 0 };
+      case "lizard":
+        return { stdout: fixture("lizard.csv"), stderr: "", code: 0 };
+      case "jscpd":
+        return { stdout: "", stderr: "", code: 0 };
+      case "semgrep":
+        return { stdout: fixture("semgrep.json"), stderr: "", code: 1 };
+      case "gitleaks":
+        return { stdout: fixture("gitleaks.json"), stderr: "", code: 1 };
+      case "aislop":
+        return { stdout: fixture("aislop.json"), stderr: "", code: 0 };
+      default:
+        return { stdout: "", stderr: `no mock for ${command}`, code: 127 };
+    }
+  };
+}
+
+const deps: ScanDeps = {
+  exec: makeFixtureExec(),
+  which: whichAll,
+  readFile: async () => fixture("jscpd.json"),
+  tmpDir: () => "/tmp/pi-code-quality-test",
+};
+
+describe("listProjectFiles", () => {
+  it("uses git ls-files output", async () => {
+    const exec: ExecFn = async () => ({ stdout: "a.ts\0b.py\0c.go\0", stderr: "", code: 0 });
+    expect(await listProjectFiles(exec, "/repo")).toEqual(["a.ts", "b.py", "c.go"]);
+  });
+
+  it("falls back to find when git is unavailable", async () => {
+    const exec: ExecFn = async (command) => {
+      if (command === "git") return { stdout: "", stderr: "not a repo", code: 128 };
+      return { stdout: "src/a.ts\nsrc/b.py\n", stderr: "", code: 0 };
+    };
+    expect(await listProjectFiles(exec, "/repo")).toEqual(["src/a.ts", "src/b.py"]);
+  });
+});
+
+describe("computeFileSpaghetti", () => {
+  const functions: LizardFunction[] = [
+    { name: "a", file: "f1.py", startLine: 1, endLine: 5, cyclomaticComplexity: 9, nloc: 100, parameterCount: 0, tokenCount: 10 },
+    { name: "b", file: "f1.py", startLine: 6, endLine: 10, cyclomaticComplexity: 2, nloc: 20, parameterCount: 0, tokenCount: 5 },
+    { name: "c", file: "f2.py", startLine: 1, endLine: 5, cyclomaticComplexity: 1, nloc: 10, parameterCount: 0, tokenCount: 3 },
+  ];
+
+  it("aggregates per-file and sorts worst-first", () => {
+    const results = computeFileSpaghetti(functions);
+    expect(results).toHaveLength(2);
+    expect(results[0].file).toBe("f1.py");
+    // f1: SCC 11, SLOC 120 → 11 + 0 + 6 = 17
+    expect(results[0].value).toBe(17);
+    expect(results[0].band).toBe("review");
+    // f2: SCC 1, SLOC 10 → 1 + 0.5 = 1.5
+    expect(results[1].value).toBeCloseTo(1.5, 5);
+  });
+
+  it("includes globals when provided", () => {
+    const results = computeFileSpaghetti(functions, 2);
+    // f1: 11 + 10 + 6 = 27
+    expect(results[0].value).toBe(27);
+  });
+});
+
+describe("runScan", () => {
+  it("produces a full report with all six metrics scored", async () => {
+    const report = await runScan(deps, { target: ".", cwd: "/repo" });
+
+    for (const id of ["complexity", "duplication", "spaghetti", "security", "secrets", "slop"]) {
+      expect(report.scores[id as keyof typeof report.scores].metric).toBe(id);
+      expect(report.scores[id as keyof typeof report.scores].status).not.toBe("unavailable");
+    }
+
+    expect(report.overall).toBe(55);
+    expect(report.gate).toEqual({ failBelow: 70, passed: false });
+  });
+
+  it("marks every metric unavailable when no tools are installed", async () => {
+    const noTools: ScanDeps = { ...deps, which: whichNone };
+    const report = await runScan(noTools, { target: ".", cwd: "/repo" });
+
+    for (const id of ["complexity", "duplication", "spaghetti", "security", "secrets", "slop"]) {
+      expect(report.scores[id as keyof typeof report.scores].status).toBe("unavailable");
+    }
+    expect(report.overall).toBeNull();
+    expect(report.gate).toBeUndefined();
+  });
+
+  it("marks a metric unavailable on tool error without failing the scan", async () => {
+    const brokenExec: ExecFn = async (command) => {
+      if (command === "semgrep") return { stdout: "", stderr: "config error", code: 2 };
+      return makeFixtureExec()(command, []);
+    };
+    const report = await runScan({ ...deps, exec: brokenExec }, { target: ".", cwd: "/repo" });
+
+    expect(report.scores.security.status).toBe("unavailable");
+    expect(report.scores.security.detail?.unavailableReason).toContain("tool error");
+    // Other metrics still computed.
+    expect(report.scores.complexity.status).not.toBe("unavailable");
+  });
+});
