@@ -364,7 +364,7 @@ export async function runScan(deps: ScanDeps, options: ScanOptions): Promise<Met
           cwd,
           target,
           (t) => ["scan", "--json", "--exclude", excludes.join(","), t],
-          { allowExitCodes: [0] },
+          { allowExitCodes: [0, 1] },
           parseAislopJson,
         );
   emit(summarizeMetric("code slop (aislop)", "slop", scores.slop));

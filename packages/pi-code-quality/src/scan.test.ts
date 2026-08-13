@@ -36,7 +36,7 @@ function makeFixtureExec(): ExecFn {
       case "gitleaks":
         return { stdout: fixture("gitleaks.json"), stderr: "", code: 1 };
       case "aislop":
-        return { stdout: fixture("aislop.json"), stderr: "", code: 0 };
+        return { stdout: fixture("aislop.json"), stderr: "", code: 1 };
       default:
         return { stdout: "", stderr: `no mock for ${command}`, code: 127 };
     }

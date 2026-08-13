@@ -20,11 +20,15 @@
   "files": [
     "dist",
     "README.md",
-    "package.json"
+    "package.json",
+    "skills"
   ],
   "pi": {
     "extensions": [
       "./dist/index.js"
+    ],
+    "skills": [
+      "./skills"
     ]
   },
   "scripts": {
