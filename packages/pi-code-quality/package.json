@@ -1,0 +1,48 @@
+{
+  "name": "@victorhg/pi-code-quality",
+  "version": "0.1.0",
+  "description": "Code quality metrics for the Pi coding agent: complexity, duplication, spaghetti index, security errors, exposed secrets, and anti-code-slop scoring.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "keywords": [
+    "pi-package",
+    "code-quality",
+    "complexity",
+    "duplication",
+    "spaghetti-index",
+    "sast",
+    "secrets",
+    "slop"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "build:self": "tsc",
+    "build": "tsc",
+    "check:self": "tsc --noEmit",
+    "test:self": "vitest run"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "optionalDependencies": {
+    "@victorhg/pi-footer": "workspace:*"
+  }
+}
