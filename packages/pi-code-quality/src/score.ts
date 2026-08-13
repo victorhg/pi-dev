@@ -6,7 +6,7 @@
  * weighted maintainability score, and evaluate a pass/fail gate.
  */
 
-import type { Finding, MetricId, MetricScore, MetricStatus, Severity } from "./schema.js";
+import type { MetricId, MetricScore, MetricStatus, Severity } from "./schema.js";
 import { METRIC_IDS } from "./schema.js";
 import type { ParseResult } from "./normalize.js";
 

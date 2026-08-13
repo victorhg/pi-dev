@@ -65,6 +65,28 @@ describe("runTool", () => {
     expect(res.stdout).toBe('{"ok": true}');
   });
 
+  it("does not prepend cwd to an absolute resultFile", async () => {
+    const exec: ExecFn = async () => ({ stdout: "", stderr: "", code: 0 });
+    const readFile = async (p: string) => p;
+    const res = await runTool(exec, "jscpd", ["src"], {
+      cwd: "/project",
+      resultFile: "/var/tmp/jscpd-report.json",
+      readFile,
+    });
+    expect(res.stdout).toBe("/var/tmp/jscpd-report.json");
+  });
+
+  it("joins cwd with a relative resultFile", async () => {
+    const exec: ExecFn = async () => ({ stdout: "", stderr: "", code: 0 });
+    const readFile = async (p: string) => p;
+    const res = await runTool(exec, "jscpd", ["src"], {
+      cwd: "/project",
+      resultFile: "report/jscpd-report.json",
+      readFile,
+    });
+    expect(res.stdout).toBe("/project/report/jscpd-report.json");
+  });
+
   it("does not read the result file when the command fails", async () => {
     const exec: ExecFn = async () => ({ stdout: "", stderr: "boom", code: 2 });
     let readCalled = false;
@@ -97,7 +119,7 @@ describe("resolveToolCommand", () => {
   it("returns the first available candidate", () => {
     // jscpd itself is not installed, but npx is → fallback candidate wins.
     const argv = resolveToolCommand(TOOL_SPECS.duplication, which);
-    expect(argv).toEqual(["npx", "jscpd"]);
+    expect(argv).toEqual(["npx", "--yes", "jscpd"]);
   });
 
   it("prefers a directly installed binary over a runner fallback", () => {

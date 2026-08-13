@@ -8,6 +8,7 @@
 
 import { spawnSync } from "node:child_process";
 import { readFile as fsReadFile } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
 import type { MetricId } from "./schema.js";
 
 export interface RunOptions {
@@ -82,9 +83,9 @@ export async function runTool(
 
   if (options.resultFile) {
     const readFile = options.readFile ?? defaultReadFile;
-    const fullPath = options.cwd
-      ? `${options.cwd.replace(/\/$/, "")}/${options.resultFile}`
-      : options.resultFile;
+    const fullPath = isAbsolute(options.resultFile)
+      ? options.resultFile
+      : join(options.cwd ?? ".", options.resultFile);
     const content = await readFile(fullPath);
     return { ...result, stdout: content };
   }
@@ -141,7 +142,7 @@ export const TOOL_SPECS: Record<MetricId, ToolSpec> = {
     metric: "duplication",
     candidates: [
       ["jscpd"],
-      ["npx", "jscpd"],
+      ["npx", "--yes", "jscpd"],
     ],
   },
   security: {
@@ -161,7 +162,7 @@ export const TOOL_SPECS: Record<MetricId, ToolSpec> = {
     metric: "slop",
     candidates: [
       ["aislop"],
-      ["npx", "aislop"],
+      ["npx", "--yes", "aislop"],
       ["pipx", "run", "aislop"],
     ],
   },

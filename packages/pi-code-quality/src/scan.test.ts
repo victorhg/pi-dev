@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   listProjectFiles,
-  computeFileSpaghetti,
+  computeFunctionSpaghetti,
   runScan,
   type ScanDeps,
 } from "./scan.js";
@@ -48,9 +48,14 @@ const deps: ScanDeps = {
 };
 
 describe("listProjectFiles", () => {
-  it("uses git ls-files output", async () => {
-    const exec: ExecFn = async () => ({ stdout: "a.ts\0b.py\0c.go\0", stderr: "", code: 0 });
-    expect(await listProjectFiles(exec, "/repo")).toEqual(["a.ts", "b.py", "c.go"]);
+  it("uses git ls-files scoped to the target", async () => {
+    const calls: string[][] = [];
+    const exec: ExecFn = async (_c, args) => {
+      calls.push(args);
+      return { stdout: "a.ts\0b.py\0c.go\0", stderr: "", code: 0 };
+    };
+    expect(await listProjectFiles(exec, "/repo", "src")).toEqual(["a.ts", "b.py", "c.go"]);
+    expect(calls[0]).toEqual(["ls-files", "-z", "--", "src"]);
   });
 
   it("falls back to find when git is unavailable", async () => {
@@ -58,32 +63,34 @@ describe("listProjectFiles", () => {
       if (command === "git") return { stdout: "", stderr: "not a repo", code: 128 };
       return { stdout: "src/a.ts\nsrc/b.py\n", stderr: "", code: 0 };
     };
-    expect(await listProjectFiles(exec, "/repo")).toEqual(["src/a.ts", "src/b.py"]);
+    expect(await listProjectFiles(exec, "/repo", "src")).toEqual(["src/a.ts", "src/b.py"]);
   });
 });
 
-describe("computeFileSpaghetti", () => {
+describe("computeFunctionSpaghetti", () => {
   const functions: LizardFunction[] = [
     { name: "a", file: "f1.py", startLine: 1, endLine: 5, cyclomaticComplexity: 9, nloc: 100, parameterCount: 0, tokenCount: 10 },
     { name: "b", file: "f1.py", startLine: 6, endLine: 10, cyclomaticComplexity: 2, nloc: 20, parameterCount: 0, tokenCount: 5 },
     { name: "c", file: "f2.py", startLine: 1, endLine: 5, cyclomaticComplexity: 1, nloc: 10, parameterCount: 0, tokenCount: 3 },
   ];
 
-  it("aggregates per-file and sorts worst-first", () => {
-    const results = computeFileSpaghetti(functions);
-    expect(results).toHaveLength(2);
-    expect(results[0].file).toBe("f1.py");
-    // f1: SCC 11, SLOC 120 → 11 + 0 + 6 = 17
-    expect(results[0].value).toBe(17);
-    expect(results[0].band).toBe("review");
-    // f2: SCC 1, SLOC 10 → 1 + 0.5 = 1.5
-    expect(results[1].value).toBeCloseTo(1.5, 5);
+  it("computes per-function SF and sorts worst-first", () => {
+    const results = computeFunctionSpaghetti(functions);
+    expect(results).toHaveLength(3);
+    // a: 9 + 100/20 = 14
+    expect(results[0]).toMatchObject({ name: "a", file: "f1.py" });
+    expect(results[0].value).toBe(14);
+    expect(results[0].band).toBe("ok");
+    // b: 2 + 20/20 = 3
+    expect(results[1].value).toBe(3);
+    // c: 1 + 10/20 = 1.5
+    expect(results[2].value).toBeCloseTo(1.5, 5);
   });
 
   it("includes globals when provided", () => {
-    const results = computeFileSpaghetti(functions, 2);
-    // f1: 11 + 10 + 6 = 27
-    expect(results[0].value).toBe(27);
+    const results = computeFunctionSpaghetti(functions, 2);
+    // a: 9 + 10 + 5 = 24
+    expect(results[0].value).toBe(24);
   });
 });
 

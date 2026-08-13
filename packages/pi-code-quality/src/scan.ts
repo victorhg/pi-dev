@@ -53,24 +53,22 @@ export interface ScanOptions {
 const LIZARD_EXCLUDES = ["*/node_modules/*", "*/dist/*", "*/build/*", "*/coverage/*", "*/.git/*"];
 
 function mergedConfig(config?: ScanConfig): ScanConfig {
-  return {
-    ...DEFAULT_CONFIG,
-    ...config,
-    weights: { ...DEFAULT_CONFIG.weights, ...(config?.weights ?? {}) },
-  };
+  const weights = { ...DEFAULT_CONFIG.weights };
+  if (config?.weights) Object.assign(weights, config.weights);
+  return { ...DEFAULT_CONFIG, ...config, weights };
 }
 
 // ── File listing (for language detection) ────────────────────────────────────
 
-export async function listProjectFiles(exec: ExecFn, cwd: string): Promise<string[]> {
-  const git = await exec("git", ["ls-files", "-z"], { cwd });
+export async function listProjectFiles(exec: ExecFn, cwd: string, target = "."): Promise<string[]> {
+  const git = await exec("git", ["ls-files", "-z", "--", target], { cwd });
   if (git.code === 0 && git.stdout) {
     return git.stdout.split("\0").filter(Boolean);
   }
 
   const find = await exec(
     "find",
-    [".", "-type", "f", "-not", "-path", "*/node_modules/*", "-not", "-path", "*/.git/*"],
+    [target, "-type", "f", "-not", "-path", "*/node_modules/*", "-not", "-path", "*/.git/*"],
     { cwd },
   );
   if (find.code === 0) {
@@ -99,30 +97,24 @@ function erroredMetric(metric: MetricId, err: unknown): MetricScore {
 
 // ── Spaghetti factor from lizard functions ───────────────────────────────────
 
-export interface FileSpaghetti extends SpaghettiResult {
+export interface FunctionSpaghetti extends SpaghettiResult {
   file: string;
+  name: string;
 }
 
 /**
- * Aggregate per-function lizard data into per-file Spaghetti Factors.
- * SCC ≈ sum of function cyclomatic complexity; SLOC = sum of nloc.
+ * Compute a Spaghetti Factor per function (each function is a module).
+ * SCC ≈ the function's cyclomatic complexity; SLOC = its nloc.
  * `globals` defaults to 0 in v1 (language-ambiguous), documented approximation.
  */
-export function computeFileSpaghetti(functions: LizardFunction[], globals = 0): FileSpaghetti[] {
-  const byFile = new Map<string, LizardFunction[]>();
-  for (const f of functions) {
-    const list = byFile.get(f.file) ?? [];
-    list.push(f);
-    byFile.set(f.file, list);
-  }
-
-  const results: FileSpaghetti[] = [];
-  for (const [file, fns] of byFile) {
-    const scc = fns.reduce((sum, f) => sum + f.cyclomaticComplexity, 0);
-    const sloc = fns.reduce((sum, f) => sum + f.nloc, 0);
-    results.push({ ...computeSpaghettiFactor(scc, globals, sloc), file });
-  }
-  return results.sort((a, b) => b.value - a.value);
+export function computeFunctionSpaghetti(functions: LizardFunction[], globals = 0): FunctionSpaghetti[] {
+  return functions
+    .map((f) => ({
+      ...computeSpaghettiFactor(f.cyclomaticComplexity, globals, f.nloc),
+      file: f.file,
+      name: f.name,
+    }))
+    .sort((a, b) => b.value - a.value);
 }
 
 // ── Per-tool runners ─────────────────────────────────────────────────────────
@@ -163,15 +155,15 @@ async function runLizard(
     const complexity = METRIC_SCORERS.complexity(parsed);
 
     const functions = (parsed.detail.functions ?? []) as LizardFunction[];
-    const fileSfs = computeFileSpaghetti(functions);
-    const worst = worstSpaghetti(fileSfs);
+    const functionSfs = computeFunctionSpaghetti(functions);
+    const worst = worstSpaghetti(functionSfs);
     const spaghetti = worst
       ? METRIC_SCORERS.spaghetti({
           findings: [],
           detail: {
             spaghettiFactor: worst.value,
             spaghettiBand: worst.band,
-            perFileSpaghetti: fileSfs,
+            perFunctionSpaghetti: functionSfs,
             globals: 0,
           },
         })
@@ -250,7 +242,7 @@ export async function runScan(deps: ScanDeps, options: ScanOptions): Promise<Met
   const { target, cwd } = options;
   const config = mergedConfig(options.config);
 
-  const files = await listProjectFiles(deps.exec, cwd);
+  const files = await listProjectFiles(deps.exec, cwd, target);
   const languages = detectLanguages(files);
 
   const scores: Partial<Record<MetricId, MetricScore>> = {};

@@ -123,8 +123,6 @@ export interface LizardFunction {
   tokenCount: number;
 }
 
-const LIZARD_HEADER = ["NLOC", "CCN", "token", "PARAM", "length", "location", "file", "function", "long_name", "start", "end"];
-
 function isLizardHeader(row: string[]): boolean {
   return row[0]?.trim().toLowerCase() === "nloc" && row[1]?.trim().toLowerCase() === "ccn";
 }

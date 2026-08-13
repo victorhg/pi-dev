@@ -94,7 +94,7 @@ Weights, the gate threshold, and the complexity threshold are tunable via `ScanC
 | ≤ 75 | unmaintainable | Start over |
 | > 75 | nightmare | Re-architect the subsystem |
 
-> **v1 approximation:** the `Globals` term is set to 0 because "global variable" is language-ambiguous (well-defined in C, murky in JS/Python). SF is computed per file as `sum(CCN) + (sum(nloc) / 20)`.
+> **v1 approximation:** the `Globals` term is set to 0 because "global variable" is language-ambiguous (well-defined in C, murky in JS/Python). SF is computed per function as `CCN + (nloc / 20)`, and the worst function gates the project score.
 
 ## Boundaries with other packages
 
