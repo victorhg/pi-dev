@@ -42,12 +42,22 @@ export interface ScanDeps {
   tmpDir?: () => string;
 }
 
+export interface ScanProgress {
+  /** Human-readable description of the current step. */
+  stage: string;
+  metric?: MetricId;
+  status: "start" | "done" | "skipped" | "error";
+  detail?: string;
+}
+
 export interface ScanOptions {
   /** Path to scan, relative to cwd. */
   target: string;
   /** Working directory for tool execution. */
   cwd: string;
   config?: ScanConfig;
+  /** Live progress callback (start/done/skipped per step). */
+  onProgress?: (progress: ScanProgress) => void;
 }
 
 const LIZARD_EXCLUDES = ["*/node_modules/*", "*/dist/*", "*/build/*", "*/coverage/*", "*/.git/*"];
@@ -274,18 +284,30 @@ async function runOne(
 export async function runScan(deps: ScanDeps, options: ScanOptions): Promise<MetricReport> {
   const { target, cwd } = options;
   const config = mergedConfig(options.config);
+  const progress = options.onProgress;
+  const emit = (p: ScanProgress) => progress?.(p);
 
+  emit({ stage: "Listing project files", status: "start" });
   const files = await listProjectFiles(deps.exec, cwd, target);
   const languages = detectLanguages(files);
+  emit({
+    stage: `Detected ${languages.length ? languages.join(", ") : "no recognized"} language${languages.length === 1 ? "" : "s"}`,
+    status: "done",
+  });
 
   const scores: Partial<Record<MetricId, MetricScore>> = {};
 
+  emit({ stage: "Running lizard (complexity + spaghetti)", metric: "complexity", status: "start" });
   const lizard = await runLizard(deps, cwd, target, languages, config);
   scores.complexity = lizard.complexity;
   scores.spaghetti = lizard.spaghetti;
+  emit(summarizeMetric("Running lizard (complexity + spaghetti)", "complexity", lizard.complexity));
 
+  emit({ stage: "Running jscpd (duplication)", metric: "duplication", status: "start" });
   scores.duplication = await runJscpd(deps, cwd, target);
+  emit(summarizeMetric("Running jscpd (duplication)", "duplication", scores.duplication));
 
+  emit({ stage: "Running semgrep (security)", metric: "security", status: "start" });
   scores.security = await runOne(
     deps,
     "security",
@@ -295,17 +317,21 @@ export async function runScan(deps: ScanDeps, options: ScanOptions): Promise<Met
     { allowExitCodes: [0, 1], timeout: 120_000 },
     parseSemgrepJson,
   );
+  emit(summarizeMetric("Running semgrep (security)", "security", scores.security));
 
+  emit({ stage: "Running gitleaks (secrets)", metric: "secrets", status: "start" });
   scores.secrets = await runOne(
     deps,
     "secrets",
     cwd,
     target,
-    (t) => ["detect", "--report-format", "json", "--no-git", "--redact", "--source", t],
+    (t) => ["detect", "--report-format", "json", "--report-path", "-", "--no-git", "--redact", "--no-banner", "--source", t],
     { allowExitCodes: [0, 1] },
     parseGitleaksJson,
   );
+  emit(summarizeMetric("Running gitleaks (secrets)", "secrets", scores.secrets));
 
+  emit({ stage: "Running aislop (code slop)", metric: "slop", status: "start" });
   scores.slop =
     languages.length === 0 || !isAislopScoreable(languages)
       ? missingMetric("slop", "aislop does not support the detected languages")
@@ -318,6 +344,7 @@ export async function runScan(deps: ScanDeps, options: ScanOptions): Promise<Met
           { allowExitCodes: [0] },
           parseAislopJson,
         );
+  emit(summarizeMetric("Running aislop (code slop)", "slop", scores.slop));
 
   const overall = aggregateScores(scores, config.weights);
   const gate = config.failBelow != null ? evaluateGate(overall, config.failBelow) : undefined;
@@ -330,4 +357,17 @@ export async function runScan(deps: ScanDeps, options: ScanOptions): Promise<Met
     slug: slugify(target),
     gate,
   };
+}
+
+/** Build a done/skipped progress event from a metric's final status. */
+function summarizeMetric(stage: string, metric: MetricId, result: MetricScore): ScanProgress {
+  if (result.status === "unavailable") {
+    const reason =
+      typeof result.detail?.unavailableReason === "string" && result.detail.unavailableReason
+        ? result.detail.unavailableReason
+        : "unavailable";
+    return { stage, metric, status: "skipped", detail: reason };
+  }
+  const findings = result.findings.length ? ` · ${result.findings.length} finding${result.findings.length === 1 ? "" : "s"}` : "";
+  return { stage, metric, status: "done", detail: `score ${result.score}/100${findings}` };
 }

@@ -14,7 +14,7 @@ import type {
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Box, Text } from "@earendil-works/pi-tui";
-import { runScan, checkToolAvailability } from "./scan.js";
+import { runScan, checkToolAvailability, type ScanProgress } from "./scan.js";
 import {
   renderScorecardText,
   renderFindingsSummary,
@@ -102,7 +102,11 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
     resetSession();
   });
 
-  const scan = async (target: string, ctx: ExtensionContext): Promise<MetricReport> => {
+  const scan = async (
+    target: string,
+    ctx: ExtensionContext,
+    onProgress?: (progress: ScanProgress) => void,
+  ): Promise<MetricReport> => {
     const report = await runScan(
       {
         exec: (command, args, options) =>
@@ -112,7 +116,7 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
             cwd: options?.cwd,
           }),
       },
-      { target, cwd: ctx.cwd },
+      { target, cwd: ctx.cwd, onProgress },
     );
     session.lastReport = report;
     session.scanCount++;
@@ -139,9 +143,13 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
       },
       required: ["target"],
     },
-    async execute(_toolCallId, args, _signal, _onUpdate, ctx) {
+    async execute(_toolCallId, args, _signal, onUpdate, ctx) {
       const target = (args as { target?: string }).target || ".";
-      const report = await scan(target, ctx);
+      const report = await scan(target, ctx, (p) => {
+        const icon = p.status === "start" ? "⏳" : p.status === "done" ? "✅" : "⚠️";
+        const detail = p.detail ? ` — ${p.detail}` : "";
+        onUpdate?.({ content: [{ type: "text", text: `${icon} ${p.stage}${detail}` }], details: {} });
+      });
 
       const text = `${renderScorecardText(report)}\n\nTop findings:\n${renderFindingsSummary(report)}`;
       return {
@@ -200,7 +208,18 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
       }
 
       try {
-        const report = await scan(target, ctx);
+        const report = await scan(target, ctx, (p) => {
+          if (p.status === "start") {
+            ctx.ui.setStatus("code-quality", `📐 ${p.stage}…`);
+          } else {
+            const icon = p.status === "done" ? "✅" : "⚠️";
+            const detail = p.detail ? ` — ${p.detail}` : "";
+            ctx.ui.setStatus("code-quality", `📐 ${p.stage}: ${p.status}${detail}`);
+            ctx.ui.notify(`${icon} ${p.stage}${detail}`, p.status === "done" ? "info" : "warning");
+          }
+        });
+
+        ctx.ui.setStatus("code-quality", undefined);
 
         // Persistent report card in the transcript (collapse for summary, expand for findings).
         pi.appendEntry("code-quality-report", buildReportCard(report));

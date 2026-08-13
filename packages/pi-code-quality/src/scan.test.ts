@@ -153,4 +153,23 @@ describe("runScan", () => {
     // Other metrics still computed.
     expect(report.scores.complexity.status).not.toBe("unavailable");
   });
+
+  it("emits progress events for each step", async () => {
+    const events: string[] = [];
+    await runScan(deps, {
+      target: ".",
+      cwd: "/repo",
+      onProgress: (p) => events.push(`${p.status}:${p.stage}`),
+    });
+
+    const starts = events.filter((e) => e.startsWith("start:"));
+    const finishes = events.filter((e) => e.startsWith("done:") || e.startsWith("skipped:"));
+
+    // 6 starts: file listing + 5 tool runs.
+    expect(starts.length).toBe(6);
+    expect(starts.some((e) => e.includes("lizard"))).toBe(true);
+    expect(starts.some((e) => e.includes("semgrep"))).toBe(true);
+    // Every tool also emits a finish event.
+    expect(finishes.length).toBe(6);
+  });
 });
