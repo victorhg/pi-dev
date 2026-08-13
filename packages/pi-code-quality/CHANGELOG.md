@@ -3,7 +3,10 @@
 ## 0.1.0
 
 - Initial release
-- Code quality metrics: cyclomatic/cognitive complexity, code duplication, spaghetti index, security errors, exposed secrets, anti-code-slop
+- Code quality metrics: cyclomatic complexity (`lizard`), code duplication (`jscpd`), spaghetti index (Koopman SF), security errors (`semgrep`), exposed secrets (`gitleaks`), anti-code-slop (`aislop`)
+- Multi-language project detection with per-tool routing and graceful `unavailable` fallback
+- Configurable metric weights, pass/fail gate, and complexity threshold
 - Commands: `/code-quality:scan`, `/code-quality:status`, `/code-quality:report`
 - Custom tool: `code_quality_scan` for agent-driven metric evaluation
+- Markdown report generation to `quality/<slug>-report.md`
 - Footer integration via `@victorhg/pi-footer` (optional)

@@ -16,11 +16,13 @@ All packages below can be installed individually via `pi install @victorhg/<name
 | `@victorhg/pi-web-quality` | Automated web quality assurance (a11y, performance, SEO, semantics). | optional — shows `🌐` health badge |
 | `@victorhg/pi-sec-quality` | Automated security auditing and vulnerability scanning. | optional — shows `🛡️` security badge |
 | `@victorhg/pi-hallmark` | Anti-AI-slop design skill and extension (macrostructures, themes, audits). | optional — shows `🎨` Hallmark badge |
+| `@victorhg/pi-code-quality` | Code quality metrics — complexity, duplication, spaghetti index, security, secrets, slop. | optional — shows `📐` quality badge |
 | `@victorhg/pi-last-session` | Session context persistence — save, restore, and inspect previous sessions. | — |
 
 ### Footer integration dependency
 
-`pi-auto-compact`, `pi-token-saver`, `pi-web-quality`, and `pi-sec-quality` all declare `@victorhg/pi-footer` as an
+`pi-auto-compact`, `pi-token-saver`, `pi-web-quality`, `pi-sec-quality`,
+`pi-hallmark`, and `pi-code-quality` all declare `@victorhg/pi-footer` as an
 `optionalDependency`. Footer registration is attempted at startup and silently
 skipped if `pi-footer` is not installed. To enable the status bar indicators,
 install `pi-footer` alongside them.
@@ -42,6 +44,7 @@ All other packages are available individually but require an explicit install.
 | `@victorhg/pi-hallmark` | ✅ | Anti-AI-slop design system and UI structure enforcement |
 | `@victorhg/pi-no-bash` | ❌ | Opt-in only — breaks workflows that depend on bash |
 | `@victorhg/pi-last-session` | ❌ | Opt-in only — requires deliberate session management workflow |
+| `@victorhg/pi-code-quality` | ❌ | Opt-in — requires external tools (lizard, jscpd, semgrep, gitleaks, aislop) |
 
 ## Support Packages
 

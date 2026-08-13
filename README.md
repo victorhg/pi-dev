@@ -82,6 +82,7 @@ This monorepo contains several curated packages for the Pi environment:
 - **[@victorhg/pi-auto-compact](./packages/pi-auto-compact/README.md)**: Context window manager with threshold alerts, auto-compaction triggers, and footer status integration. Optionally integrates with `pi-footer` for live usage metrics.
 - **[@victorhg/pi-web-quality](./packages/pi-web-quality/README.md)**: Automated web quality assurance (a11y, performance, SEO, semantics). Optionally integrates with `pi-footer` for live health metrics.
 - **[@victorhg/pi-sec-quality](./packages/pi-sec-quality/README.md)**: Automated security assurance and vulnerability scanning (OWASP Top 10, secret detection, API safety). Optionally integrates with `pi-footer` for live security badges.
+- **[@victorhg/pi-code-quality](./packages/pi-code-quality/README.md)**: Code quality metrics — complexity, duplication, spaghetti index, security errors, exposed secrets, and anti-code-slop patterns — aggregated into a maintainability scorecard. Optionally integrates with `pi-footer` for a live score badge.
 
 > **Root bundle:** The root `package.json` declares the default distribution bundle — the packages installed when using `my-pi` out of the box. All packages are available individually via `pi install`.
 
