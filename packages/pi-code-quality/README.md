@@ -72,15 +72,31 @@ Each metric is scored 0–100 and combined with configurable weights (defaults b
 
 ### Configuration
 
-Weights, the gate threshold, and the complexity threshold are tunable via `ScanConfig` (currently passed programmatically; a config-file loader is a follow-up):
+Create a `code-quality.json` in the project root to configure the scan (all keys optional; defaults shown):
 
-```ts
+```json
 {
-  weights: { complexity: 25, duplication: 20, spaghetti: 20, security: 15, secrets: 10, slop: 10 },
-  failBelow: 70,          // overall score below this fails the gate
-  complexityThreshold: 15 // cyclomatic complexity flag threshold
+  "weights": { "complexity": 25, "duplication": 20, "spaghetti": 20, "security": 15, "secrets": 10, "slop": 10 },
+  "failBelow": 70,
+  "complexityThreshold": 15,
+  "exclude": ["**/legacy/**", "**/generated/**"]
 }
 ```
+
+| Key | Meaning | Default |
+|---|---|---|
+| `weights` | Per-metric weights for the aggregate score (should sum to 100) | 25/20/20/15/10/10 |
+| `failBelow` | Overall score below this fails the gate | 70 |
+| `complexityThreshold` | Cyclomatic complexity that flags a function | 15 |
+| `exclude` | Extra gitignore-style globs to skip (additive) | `[]` |
+
+### Excluding files & directories (reducing false positives)
+
+A set of noise defaults is applied to every scan — build artifacts (`node_modules`, `dist`, `build`, `coverage`, `vendor`, `.next`), lockfiles, and test/fixture/generated files (`*.test.*`, `*.spec.*`, `__tests__`, `fixtures`, `*.snap`, `*.d.ts`, `*.min.*`).
+
+Add more via `code-quality.json` → `exclude` (gitignore-style globs). These are passed to `jscpd` (`--ignore`), `aislop` (`--exclude`), `semgrep` (`--exclude`), and `lizard` (`-x`).
+
+> **gitleaks** does not accept CLI excludes — it uses a `.gitleaksignore` file in the project root (see the gitleaks docs).
 
 ### Spaghetti Factor bands
 

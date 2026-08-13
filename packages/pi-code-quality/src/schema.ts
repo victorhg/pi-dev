@@ -75,7 +75,45 @@ export interface ScanConfig {
   complexityThreshold?: number;
   /** Optional tool binary overrides per metric. */
   tools?: Partial<Record<MetricId, string>>;
+  /**
+   * Additional gitignore-style glob patterns to skip (additive to
+   * DEFAULT_EXCLUDES). Used by jscpd, aislop, semgrep, and lizard.
+   */
+  exclude?: string[];
 }
+
+/**
+ * Default noise exclusions applied to every scan: build artifacts, lockfiles,
+ * test/spec files, fixtures, snapshots, and generated code.
+ */
+export const DEFAULT_EXCLUDES: string[] = [
+  "**/node_modules/**",
+  "**/dist/**",
+  "**/build/**",
+  "**/coverage/**",
+  "**/.git/**",
+  "**/vendor/**",
+  "**/out/**",
+  "**/.next/**",
+  "**/*.min.js",
+  "**/*.min.css",
+  "**/*.d.ts",
+  "**/package-lock.json",
+  "**/pnpm-lock.yaml",
+  "**/yarn.lock",
+  "**/*.test.ts",
+  "**/*.test.tsx",
+  "**/*.test.js",
+  "**/*.test.jsx",
+  "**/*.spec.ts",
+  "**/*.spec.js",
+  "**/__tests__/**",
+  "**/__mocks__/**",
+  "**/fixtures/**",
+  "**/__fixtures__/**",
+  "**/*.snap",
+  "**/*.generated.*",
+];
 
 export const DEFAULT_WEIGHTS: Record<MetricId, number> = {
   complexity: 25,
@@ -90,4 +128,5 @@ export const DEFAULT_CONFIG: ScanConfig = {
   weights: { ...DEFAULT_WEIGHTS },
   failBelow: 70,
   complexityThreshold: 10,
+  exclude: [],
 };

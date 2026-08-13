@@ -6,7 +6,7 @@
 
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { rm } from "node:fs/promises";
+import { rm, readFile as fsReadFile } from "node:fs/promises";
 import type { ExecFn, WhichFn, RunOptions } from "./runners.js";
 import {
   runTool,
@@ -32,7 +32,7 @@ import {
   type SpaghettiResult,
 } from "./score.js";
 import type { MetricId, MetricReport, MetricScore, ScanConfig } from "./schema.js";
-import { DEFAULT_CONFIG, METRIC_IDS } from "./schema.js";
+import { DEFAULT_CONFIG, DEFAULT_EXCLUDES, METRIC_IDS } from "./schema.js";
 import { slugify } from "./report.js";
 
 export interface ScanDeps {
@@ -62,10 +62,23 @@ export interface ScanOptions {
 
 const LIZARD_EXCLUDES = ["*/node_modules/*", "*/dist/*", "*/build/*", "*/coverage/*", "*/.git/*"];
 
-function mergedConfig(config?: ScanConfig): ScanConfig {
+function mergedConfig(config?: Partial<ScanConfig>): ScanConfig {
   const weights = { ...DEFAULT_CONFIG.weights };
   if (config?.weights) Object.assign(weights, config.weights);
-  return { ...DEFAULT_CONFIG, ...config, weights };
+  return { ...DEFAULT_CONFIG, ...config, weights, exclude: [...(config?.exclude ?? [])] };
+}
+
+/** Load project config from `code-quality.json` in cwd, merged with defaults. */
+export async function loadConfig(
+  cwd: string,
+  readFileFn: (path: string) => Promise<string> = (p) => fsReadFile(p, "utf8"),
+): Promise<ScanConfig> {
+  try {
+    const raw = await readFileFn(join(cwd, "code-quality.json"));
+    return mergedConfig(JSON.parse(raw) as Partial<ScanConfig>);
+  } catch {
+    return mergedConfig(undefined);
+  }
 }
 
 // ── Tool availability ────────────────────────────────────────────────────────
@@ -162,13 +175,21 @@ export function computeFunctionSpaghetti(functions: LizardFunction[], globals = 
 
 // ── Per-tool runners ─────────────────────────────────────────────────────────
 
-function lizardArgs(languages: Language[]): string[] {
+/** lizard `-x` uses fnmatch-style where `*` matches path separators too. */
+function toLizardExcludes(patterns: string[]): string[] {
+  return patterns.map(
+    (p) => `*${p.replace(/^\*\*\//, "").replace(/\/\*\*$/, "").replace(/\/+$/, "")}*`,
+  );
+}
+
+function lizardArgs(languages: Language[], excludes: string[]): string[] {
   const args = ["--csv", "-V"];
   for (const lang of languages) {
     const flag = LIZARD_LANGUAGE_FLAGS[lang];
     if (flag) args.push("-l", flag);
   }
-  for (const exclude of LIZARD_EXCLUDES) args.push("-x", exclude);
+  const all = [...new Set([...LIZARD_EXCLUDES, ...toLizardExcludes(excludes)])];
+  for (const exclude of all) args.push("-x", exclude);
   return args;
 }
 
@@ -179,6 +200,7 @@ async function runLizard(
   target: string,
   languages: Language[],
   config: ScanConfig,
+  excludes: string[],
 ): Promise<{ complexity: MetricScore; spaghetti: MetricScore }> {
   const cmd = resolveToolCommand(TOOL_SPECS.complexity, deps.which ?? defaultWhich);
   if (!cmd) {
@@ -189,7 +211,7 @@ async function runLizard(
   }
 
   try {
-    const res = await runTool(deps.exec, cmd[0], [...cmd.slice(1), ...lizardArgs(languages), target], {
+    const res = await runTool(deps.exec, cmd[0], [...cmd.slice(1), ...lizardArgs(languages, excludes), target], {
       cwd,
       allowExitCodes: [0, 1],
     });
@@ -222,7 +244,7 @@ async function runLizard(
 }
 
 /** jscpd writes its JSON report to a file, hence the temp-dir dance. */
-async function runJscpd(deps: ScanDeps, cwd: string, target: string): Promise<MetricScore> {
+async function runJscpd(deps: ScanDeps, cwd: string, target: string, excludes: string[]): Promise<MetricScore> {
   const cmd = resolveToolCommand(TOOL_SPECS.duplication, deps.which ?? defaultWhich);
   if (!cmd) return missingMetric("duplication", "jscpd not installed");
 
@@ -230,7 +252,7 @@ async function runJscpd(deps: ScanDeps, cwd: string, target: string): Promise<Me
   const resultFile = join(outDir, "jscpd-report.json");
 
   try {
-    const res = await runTool(deps.exec, cmd[0], [...cmd.slice(1), target, "--reporters", "json", "--output", outDir, "--silent", "--ignore", "**/node_modules/**"], {
+    const res = await runTool(deps.exec, cmd[0], [...cmd.slice(1), target, "--reporters", "json", "--output", outDir, "--silent", "--ignore", excludes.join(",")], {
       cwd,
       resultFile,
       readFile: deps.readFile,
@@ -296,30 +318,31 @@ export async function runScan(deps: ScanDeps, options: ScanOptions): Promise<Met
   });
 
   const scores: Partial<Record<MetricId, MetricScore>> = {};
+  const excludes = [...DEFAULT_EXCLUDES, ...(config.exclude ?? [])];
 
-  emit({ stage: "Running lizard (complexity + spaghetti)", metric: "complexity", status: "start" });
-  const lizard = await runLizard(deps, cwd, target, languages, config);
+  emit({ stage: "complexity + spaghetti (lizard)", metric: "complexity", status: "start" });
+  const lizard = await runLizard(deps, cwd, target, languages, config, excludes);
   scores.complexity = lizard.complexity;
   scores.spaghetti = lizard.spaghetti;
-  emit(summarizeMetric("Running lizard (complexity + spaghetti)", "complexity", lizard.complexity));
+  emit(summarizeMetric("complexity + spaghetti (lizard)", "complexity", lizard.complexity));
 
-  emit({ stage: "Running jscpd (duplication)", metric: "duplication", status: "start" });
-  scores.duplication = await runJscpd(deps, cwd, target);
-  emit(summarizeMetric("Running jscpd (duplication)", "duplication", scores.duplication));
+  emit({ stage: "duplication (jscpd)", metric: "duplication", status: "start" });
+  scores.duplication = await runJscpd(deps, cwd, target, excludes);
+  emit(summarizeMetric("duplication (jscpd)", "duplication", scores.duplication));
 
-  emit({ stage: "Running semgrep (security)", metric: "security", status: "start" });
+  emit({ stage: "security (semgrep)", metric: "security", status: "start" });
   scores.security = await runOne(
     deps,
     "security",
     cwd,
     target,
-    (t) => ["scan", "--json", "--config", "auto", "--quiet", t],
+    (t) => ["scan", "--json", "--config", "auto", "--quiet", ...excludes.flatMap((e) => ["--exclude", e]), t],
     { allowExitCodes: [0, 1], timeout: 120_000 },
     parseSemgrepJson,
   );
-  emit(summarizeMetric("Running semgrep (security)", "security", scores.security));
+  emit(summarizeMetric("security (semgrep)", "security", scores.security));
 
-  emit({ stage: "Running gitleaks (secrets)", metric: "secrets", status: "start" });
+  emit({ stage: "secrets (gitleaks)", metric: "secrets", status: "start" });
   scores.secrets = await runOne(
     deps,
     "secrets",
@@ -329,9 +352,9 @@ export async function runScan(deps: ScanDeps, options: ScanOptions): Promise<Met
     { allowExitCodes: [0, 1] },
     parseGitleaksJson,
   );
-  emit(summarizeMetric("Running gitleaks (secrets)", "secrets", scores.secrets));
+  emit(summarizeMetric("secrets (gitleaks)", "secrets", scores.secrets));
 
-  emit({ stage: "Running aislop (code slop)", metric: "slop", status: "start" });
+  emit({ stage: "code slop (aislop)", metric: "slop", status: "start" });
   scores.slop =
     languages.length === 0 || !isAislopScoreable(languages)
       ? missingMetric("slop", "aislop does not support the detected languages")
@@ -340,11 +363,11 @@ export async function runScan(deps: ScanDeps, options: ScanOptions): Promise<Met
           "slop",
           cwd,
           target,
-          (t) => ["scan", "--json", t],
+          (t) => ["scan", "--json", "--exclude", excludes.join(","), t],
           { allowExitCodes: [0] },
           parseAislopJson,
         );
-  emit(summarizeMetric("Running aislop (code slop)", "slop", scores.slop));
+  emit(summarizeMetric("code slop (aislop)", "slop", scores.slop));
 
   const overall = aggregateScores(scores, config.weights);
   const gate = config.failBelow != null ? evaluateGate(overall, config.failBelow) : undefined;
@@ -369,5 +392,5 @@ function summarizeMetric(stage: string, metric: MetricId, result: MetricScore): 
     return { stage, metric, status: "skipped", detail: reason };
   }
   const findings = result.findings.length ? ` · ${result.findings.length} finding${result.findings.length === 1 ? "" : "s"}` : "";
-  return { stage, metric, status: "done", detail: `score ${result.score}/100${findings}` };
+  return { stage, metric, status: "done", detail: `${result.score}/100${findings}` };
 }

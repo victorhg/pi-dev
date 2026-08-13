@@ -5,11 +5,13 @@ import {
   listProjectFiles,
   computeFunctionSpaghetti,
   checkToolAvailability,
+  loadConfig,
   runScan,
   type ScanDeps,
 } from "./scan.js";
 import type { ExecFn, WhichFn } from "./runners.js";
 import type { LizardFunction } from "./normalize.js";
+import { DEFAULT_CONFIG } from "./schema.js";
 
 function fixture(name: string): string {
   return readFileSync(fileURLToPath(new URL(`../test/fixtures/${name}`, import.meta.url)), "utf8");
@@ -114,6 +116,54 @@ describe("checkToolAvailability", () => {
     const slop = result.find((t) => t.metric === "slop")!;
     expect(slop.available).toBe(true);
     expect(slop.command).toEqual(["npx", "--yes", "aislop"]);
+  });
+});
+
+describe("loadConfig", () => {
+  it("merges code-quality.json over defaults", async () => {
+    const config = await loadConfig("/repo", async () =>
+      JSON.stringify({ failBelow: 90, exclude: ["**/fixtures/**"] }),
+    );
+    expect(config.failBelow).toBe(90);
+    expect(config.exclude).toEqual(["**/fixtures/**"]);
+    expect(config.weights.complexity).toBe(25);
+  });
+
+  it("returns defaults when no config file exists", async () => {
+    const config = await loadConfig("/repo", async () => {
+      throw new Error("ENOENT");
+    });
+    expect(config.failBelow).toBe(70);
+    expect(config.exclude).toEqual([]);
+  });
+
+  it("ignores malformed JSON", async () => {
+    const config = await loadConfig("/repo", async () => "not json");
+    expect(config.failBelow).toBe(70);
+  });
+});
+
+describe("runScan excludes", () => {
+  it("threads exclude patterns into tool invocations", async () => {
+    const calls: Record<string, string[][]> = {};
+    const capturingExec: ExecFn = async (command, args) => {
+      (calls[command] ??= []).push(args);
+      return makeFixtureExec()(command, args);
+    };
+
+    await runScan(
+      { ...deps, exec: capturingExec },
+      { target: ".", cwd: "/repo", config: { ...DEFAULT_CONFIG, exclude: ["**/generated/**"] } },
+    );
+
+    const jscpdArgs = calls["jscpd"]?.[0] ?? [];
+    const jscpdIgnore = jscpdArgs[jscpdArgs.indexOf("--ignore") + 1];
+    expect(jscpdIgnore).toContain("**/node_modules/**");
+    expect(jscpdIgnore).toContain("**/generated/**");
+
+    const semgrepArgs = calls["semgrep"]?.[0] ?? [];
+    expect(semgrepArgs).toContain("--exclude");
+    expect(semgrepArgs).toContain("**/generated/**");
   });
 });
 

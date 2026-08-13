@@ -14,7 +14,7 @@ import type {
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Box, Text } from "@earendil-works/pi-tui";
-import { runScan, checkToolAvailability, type ScanProgress } from "./scan.js";
+import { runScan, checkToolAvailability, loadConfig, type ScanProgress } from "./scan.js";
 import {
   renderScorecardText,
   renderFindingsSummary,
@@ -57,6 +57,25 @@ function resetSession(ctx?: ExtensionContext): void {
 
 function countFindings(report: MetricReport): number {
   return Object.values(report.scores).reduce((n, m) => n + m.findings.length, 0);
+}
+
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+/** Live spinner + elapsed-time heartbeat; returns a stop function. */
+function startHeartbeat(
+  render: (text: string) => void,
+  getStage: () => string,
+  intervalMs = 200,
+): () => void {
+  const started = Date.now();
+  let frame = 0;
+  const tick = () => {
+    const secs = Math.round((Date.now() - started) / 1000);
+    render(`${SPINNER_FRAMES[frame++ % SPINNER_FRAMES.length]} ${getStage()}… ${secs}s`);
+  };
+  tick();
+  const id = setInterval(tick, intervalMs);
+  return () => clearInterval(id);
 }
 
 // ── Extension activation ─────────────────────────────────────────────────────
@@ -107,6 +126,7 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
     ctx: ExtensionContext,
     onProgress?: (progress: ScanProgress) => void,
   ): Promise<MetricReport> => {
+    const config = await loadConfig(ctx.cwd);
     const report = await runScan(
       {
         exec: (command, args, options) =>
@@ -116,7 +136,7 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
             cwd: options?.cwd,
           }),
       },
-      { target, cwd: ctx.cwd, onProgress },
+      { target, cwd: ctx.cwd, config, onProgress },
     );
     session.lastReport = report;
     session.scanCount++;
@@ -146,9 +166,11 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
     async execute(_toolCallId, args, _signal, onUpdate, ctx) {
       const target = (args as { target?: string }).target || ".";
       const report = await scan(target, ctx, (p) => {
-        const icon = p.status === "start" ? "⏳" : p.status === "done" ? "✅" : "⚠️";
-        const detail = p.detail ? ` — ${p.detail}` : "";
-        onUpdate?.({ content: [{ type: "text", text: `${icon} ${p.stage}${detail}` }], details: {} });
+        const text =
+          p.status === "start"
+            ? `⏳ ${p.stage}…`
+            : `${p.status === "done" ? "✅" : "⚠️"} ${p.stage}${p.detail ? ` — ${p.detail}` : ""}`;
+        onUpdate?.({ content: [{ type: "text", text }], details: {} });
       });
 
       const text = `${renderScorecardText(report)}\n\nTop findings:\n${renderFindingsSummary(report)}`;
@@ -207,19 +229,22 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
         );
       }
 
+      let stage = "Preparing scan";
+      const stopHeartbeat = startHeartbeat(
+        (t) => ctx.ui.setStatus("code-quality", `📐 ${t}`),
+        () => stage,
+      );
+
       try {
         const report = await scan(target, ctx, (p) => {
           if (p.status === "start") {
-            ctx.ui.setStatus("code-quality", `📐 ${p.stage}…`);
+            stage = p.stage;
           } else {
             const icon = p.status === "done" ? "✅" : "⚠️";
             const detail = p.detail ? ` — ${p.detail}` : "";
-            ctx.ui.setStatus("code-quality", `📐 ${p.stage}: ${p.status}${detail}`);
             ctx.ui.notify(`${icon} ${p.stage}${detail}`, p.status === "done" ? "info" : "warning");
           }
         });
-
-        ctx.ui.setStatus("code-quality", undefined);
 
         // Persistent report card in the transcript (collapse for summary, expand for findings).
         pi.appendEntry("code-quality-report", buildReportCard(report));
@@ -240,6 +265,9 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
         );
       } catch (err) {
         ctx.ui.notify(`❌ Code quality scan failed: ${String(err)}`, "error");
+      } finally {
+        stopHeartbeat();
+        ctx.ui.setStatus("code-quality", undefined);
       }
     },
   });
