@@ -13,12 +13,18 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { runScan } from "./scan.js";
+import { Box, Text } from "@earendil-works/pi-tui";
+import { runScan, checkToolAvailability } from "./scan.js";
 import {
   renderScorecardText,
   renderFindingsSummary,
+  renderFindingsList,
   renderMarkdownReport,
   reportPath,
+  buildReportCard,
+  METRIC_LABELS,
+  scoreEmoji,
+  type ReportCard,
 } from "./report.js";
 import type { MetricReport } from "./schema.js";
 
@@ -71,6 +77,25 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
 
   pi.on("session_start", (_event, ctx: ExtensionContext) => {
     resetSession(ctx);
+  });
+
+  // Persistent report card rendered into the chat transcript.
+  pi.registerEntryRenderer("code-quality-report", (entry, { expanded }, theme) => {
+    const card = entry.data as ReportCard;
+    const box = new Box(1, 1, (text) => theme.bg("customMessageBg", text));
+    box.addChild(
+      new Text(theme.bold(`📐 Code Quality: ${card.overall ?? "n/a"}/100 — ${card.target}`)),
+    );
+    for (const m of card.metrics) {
+      const icon = scoreEmoji(m.status, m.score);
+      const value = m.status === "unavailable" ? "unavailable" : `${m.score}/100`;
+      const count = m.findingsCount ? ` · ${m.findingsCount} finding${m.findingsCount === 1 ? "" : "s"}` : "";
+      box.addChild(new Text(`${icon} ${METRIC_LABELS[m.id]}: ${value}${count}`));
+    }
+    if (expanded) {
+      box.addChild(new Text(theme.fg("dim", renderFindingsList(card.findings))));
+    }
+    return box;
   });
 
   pi.on("session_shutdown", () => {
@@ -132,16 +157,66 @@ export default async function activate(pi: ExtensionAPI): Promise<void> {
   });
 
   // ── Slash commands ─────────────────────────────────────────────────────────
+  pi.registerCommand("code-quality:doctor", {
+    description: "Check which analyzer tools are installed",
+    handler: async (_args: string, ctx: ExtensionCommandContext) => {
+      const availability = checkToolAvailability();
+      const missing = availability.filter((t) => !t.available);
+      const installed = availability.filter((t) => t.available);
+
+      if (missing.length === 0) {
+        ctx.ui.notify("✅ All code quality tools are available.", "info");
+        return;
+      }
+
+      const missingLines = missing
+        .map((t) => `  ❌ ${t.metric} (${t.tool}) — install with: ${t.installHint}`)
+        .join("\n");
+      const installedSummary = installed.length
+        ? `\nInstalled:\n${installed.map((t) => `  ✅ ${t.metric} (${t.tool})`).join("\n")}`
+        : "";
+      ctx.ui.notify(
+        `⚠️ ${missing.length}/${availability.length} tools missing:\n${missingLines}${installedSummary}`,
+        "warning",
+      );
+    },
+  });
+
   pi.registerCommand("code-quality:scan", {
-    description: "Run a code quality scan on a path",
+    description: "Run a code quality scan on a path and report findings",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       const target = args.trim() || ".";
       ctx.ui.notify(`📐 Scanning code quality on '${target}'...`, "info");
+
+      // Validate tools upfront so missing analyzers are visible immediately.
+      const missing = checkToolAvailability().filter((t) => !t.available);
+      if (missing.length > 0) {
+        ctx.ui.notify(
+          `⚠️ Missing tools (those metrics will be skipped): ${missing
+            .map((t) => `${t.tool} → ${t.installHint}`)
+            .join(" · ")}`,
+          "warning",
+        );
+      }
+
       try {
         const report = await scan(target, ctx);
+
+        // Persistent report card in the transcript (collapse for summary, expand for findings).
+        pi.appendEntry("code-quality-report", buildReportCard(report));
+
+        // Auto-save the full Markdown risk report.
+        const filePath = reportPath(report.slug);
+        try {
+          await mkdir(path.dirname(filePath), { recursive: true });
+          await writeFile(filePath, renderMarkdownReport(report), "utf-8");
+        } catch {
+          // Report card already shown; file save is best-effort.
+        }
+
         const icon = report.overall == null ? "📐" : report.overall >= 80 ? "✅" : report.overall >= 60 ? "⚠️" : "❌";
         ctx.ui.notify(
-          `${icon} Code quality: ${report.overall ?? "n/a"}/100 (${countFindings(report)} findings)`,
+          `${icon} Code quality: ${report.overall ?? "n/a"}/100 — ${countFindings(report)} findings. Full report: ${filePath}`,
           report.overall != null && report.overall >= 60 ? "info" : "warning",
         );
       } catch (err) {

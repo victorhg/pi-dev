@@ -33,6 +33,8 @@ export interface Finding {
   line?: number;
   /** Tool-specific rule id (e.g. "ai-slop/narrative-comment"). */
   ruleId?: string;
+  /** Human-readable direction on how to fix the finding. */
+  remediation?: string;
   /** Raw extra data from the underlying tool. */
   meta?: Record<string, unknown>;
 }

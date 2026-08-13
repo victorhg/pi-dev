@@ -4,7 +4,7 @@
  * tolerate malformed input and unknown fields without throwing.
  */
 
-import type { Finding, Severity } from "./schema.js";
+import type { Finding, MetricId, Severity } from "./schema.js";
 
 export interface ParseResult {
   findings: Finding[];
@@ -31,6 +31,36 @@ export function mapToolSeverity(raw: unknown): Severity {
     default:
       return "info";
   }
+}
+
+const METRIC_REMEDIATIONS: Record<MetricId, string> = {
+  complexity: "Split the function into smaller, focused functions to reduce branching.",
+  duplication: "Extract the duplicated block into a shared helper and reuse it in both places.",
+  spaghetti: "Reduce cyclomatic complexity and global state; break the module into smaller pieces.",
+  security: "Fix the flagged issue per the rule guidance, then verify with a test.",
+  secrets: "Remove the hardcoded secret, move it to an env var/secrets manager, and rotate it.",
+  slop: "Remove or improve the AI-generated code artifact per the rule guidance.",
+};
+
+const SLOP_REMEDIATIONS: Record<string, string> = {
+  "ai-slop/narrative-comment": "Delete the comment; make the code self-explanatory instead.",
+  "ai-slop/trivial-comment": "Delete the comment; it adds no information.",
+  "ai-slop/swallowed-exception": "Handle or rethrow the exception; never swallow it silently.",
+  "ai-slop/hidden-fallback": "Make the fallback behavior explicit and intentional.",
+  "ai-slop/hallucinated-import": "Remove the non-existent import or replace it with a real one.",
+  "ai-slop/duplicate-helper": "Consolidate the duplicated helpers into one shared implementation.",
+  "ai-slop/dead-code": "Delete the dead code.",
+  "ai-slop/empty-function": "Implement the function or remove it if it is unused.",
+  "ai-slop/todo-stub": "Resolve the TODO or remove the stub.",
+};
+
+/** Resolve a remediation hint for a finding, preferring a rule-specific one. */
+export function remediationFor(metric: MetricId, ruleId?: string): string {
+  if (ruleId) {
+    const specific = SLOP_REMEDIATIONS[ruleId];
+    if (specific) return specific;
+  }
+  return METRIC_REMEDIATIONS[metric];
 }
 
 function asArray(v: unknown): unknown[] {
@@ -176,6 +206,7 @@ export function parseLizardCsv(csv: string, options?: { complexityThreshold?: nu
         file: fn.file,
         line: fn.startLine,
         ruleId: "lizard/cyclomatic-complexity",
+        remediation: remediationFor("complexity", "lizard/cyclomatic-complexity"),
       });
     }
   }
@@ -221,6 +252,7 @@ export function parseJscpdJson(raw: string): ParseResult {
       file: a?.name,
       line: typeof a?.start === "number" ? a.start : undefined,
       ruleId: "jscpd/clone",
+      remediation: remediationFor("duplication", "jscpd/clone"),
       meta: {
         secondFile: b?.name,
         secondStart: typeof b?.start === "number" ? b.start : undefined,
@@ -262,6 +294,7 @@ export function parseAislopJson(raw: string): ParseResult {
     file: typeof d?.filePath === "string" ? d.filePath : undefined,
     line: typeof d?.line === "number" ? d.line : undefined,
     ruleId: typeof d?.rule === "string" ? d.rule : undefined,
+    remediation: remediationFor("slop", typeof d?.rule === "string" ? d.rule : undefined),
     meta: {
       engine: d?.engine,
       category: d?.category,
@@ -304,6 +337,7 @@ export function parseSemgrepJson(raw: string): ParseResult {
     file: typeof r?.path === "string" ? r.path : undefined,
     line: typeof r?.start?.line === "number" ? r.start.line : undefined,
     ruleId: typeof r?.check_id === "string" ? r.check_id : undefined,
+    remediation: remediationFor("security", typeof r?.check_id === "string" ? r.check_id : undefined),
     meta: {
       cwe: r?.extra?.metadata?.cwe,
       category: r?.extra?.metadata?.category,
@@ -341,6 +375,7 @@ export function parseGitleaksJson(raw: string): ParseResult {
     file: typeof l?.File === "string" ? l.File : undefined,
     line: typeof l?.StartLine === "number" ? l.StartLine : undefined,
     ruleId: typeof l?.RuleID === "string" ? l.RuleID : undefined,
+    remediation: remediationFor("secrets", typeof l?.RuleID === "string" ? l.RuleID : undefined),
     meta: {
       commit: l?.Commit,
       entropy: l?.Entropy,

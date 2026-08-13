@@ -32,7 +32,7 @@ import {
   type SpaghettiResult,
 } from "./score.js";
 import type { MetricId, MetricReport, MetricScore, ScanConfig } from "./schema.js";
-import { DEFAULT_CONFIG } from "./schema.js";
+import { DEFAULT_CONFIG, METRIC_IDS } from "./schema.js";
 import { slugify } from "./report.js";
 
 export interface ScanDeps {
@@ -56,6 +56,39 @@ function mergedConfig(config?: ScanConfig): ScanConfig {
   const weights = { ...DEFAULT_CONFIG.weights };
   if (config?.weights) Object.assign(weights, config.weights);
   return { ...DEFAULT_CONFIG, ...config, weights };
+}
+
+// ── Tool availability ────────────────────────────────────────────────────────
+
+export interface ToolAvailability {
+  metric: MetricId;
+  tool: string;
+  available: boolean;
+  command: string[] | null;
+  installHint: string;
+}
+
+const TOOL_INSTALL_HINTS: Record<MetricId, string> = {
+  complexity: "pip install lizard",
+  duplication: "npm i -g jscpd",
+  spaghetti: "pip install lizard",
+  security: "pip install semgrep",
+  secrets: "brew install gitleaks",
+  slop: "npm i -g aislop",
+};
+
+/** Check which analyzer tools are installed (with npx/pipx fallbacks). */
+export function checkToolAvailability(whichFn: WhichFn = defaultWhich): ToolAvailability[] {
+  return METRIC_IDS.map((metric) => {
+    const command = resolveToolCommand(TOOL_SPECS[metric], whichFn);
+    return {
+      metric,
+      tool: TOOL_SPECS[metric].candidates[0][0],
+      available: command != null,
+      command,
+      installHint: TOOL_INSTALL_HINTS[metric],
+    };
+  });
 }
 
 // ── File listing (for language detection) ────────────────────────────────────

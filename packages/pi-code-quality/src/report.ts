@@ -70,22 +70,51 @@ const SEVERITY_ORDER: Record<Finding["severity"], number> = {
   info: 4,
 };
 
-/** Top findings across all metrics, sorted by severity, for LLM consumption. */
-export function renderFindingsSummary(report: MetricReport, limit = 10): string {
-  const all = METRIC_IDS.flatMap((id) =>
-    report.scores[id].findings.map((finding) => ({ metric: id, finding })),
+/** All findings flattened and sorted by severity (most severe first). */
+export function severitySortedFindings(report: MetricReport): Finding[] {
+  return METRIC_IDS.flatMap((id) => report.scores[id].findings).sort(
+    (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity],
   );
-  const sorted = all.sort(
-    (a, b) => SEVERITY_ORDER[a.finding.severity] - SEVERITY_ORDER[b.finding.severity],
-  );
-  const top = sorted.slice(0, limit);
-  if (top.length === 0) return "No findings.";
-  return top
-    .map(({ metric, finding: f }) => {
+}
+
+/** Render findings with severity, location, and remediation direction. */
+export function renderFindingsList(findings: Finding[]): string {
+  return findings
+    .map((f) => {
       const loc = f.file ? `${f.file}${f.line ? `:${f.line}` : ""}` : "n/a";
-      return `- [${f.severity}] ${METRIC_LABELS[metric]}: ${f.message} (${loc})`;
+      const fix = f.remediation ? ` → fix: ${f.remediation}` : "";
+      return `- [${f.severity}] ${METRIC_LABELS[f.metric]}: ${f.message} (${loc})${fix}`;
     })
     .join("\n");
+}
+
+/** Top findings across all metrics, for LLM consumption. */
+export function renderFindingsSummary(report: MetricReport, limit = 10): string {
+  const top = severitySortedFindings(report).slice(0, limit);
+  if (top.length === 0) return "No findings.";
+  return renderFindingsList(top);
+}
+
+/** Lightweight, session-safe card data for the persistent TUI entry. */
+export interface ReportCard {
+  target: string;
+  overall: number | null;
+  createdAt: string;
+  metrics: Array<{ id: MetricId; score: number; status: MetricStatus; findingsCount: number }>;
+  findings: Finding[];
+}
+
+export function buildReportCard(report: MetricReport, maxFindings = 30): ReportCard {
+  return {
+    target: report.target,
+    overall: report.overall,
+    createdAt: report.createdAt,
+    metrics: METRIC_IDS.map((id) => {
+      const m = report.scores[id];
+      return { id, score: m.score, status: m.status, findingsCount: m.findings.length };
+    }),
+    findings: severitySortedFindings(report).slice(0, maxFindings),
+  };
 }
 
 /** Full Markdown report saved to `quality/<slug>-report.md`. */
@@ -125,7 +154,8 @@ export function renderMarkdownReport(report: MetricReport): string {
     for (const f of metric.findings) {
       const loc = f.file ? ` (${f.file}${f.line ? `:${f.line}` : ""})` : "";
       const rule = f.ruleId ? `[${f.ruleId}] ` : "";
-      lines.push(`- **${f.severity}** ${rule}${f.message}${loc}`);
+      const fix = f.remediation ? ` — *fix:* ${f.remediation}` : "";
+      lines.push(`- **${f.severity}** ${rule}${f.message}${loc}${fix}`);
     }
     lines.push("");
   }

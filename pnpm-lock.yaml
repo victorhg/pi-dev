@@ -76,6 +76,9 @@ importers:
       '@earendil-works/pi-coding-agent':
         specifier: file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent
         version: file:../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent(ws@8.21.0)(zod@4.4.3)
+      '@earendil-works/pi-tui':
+        specifier: file:../../../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui
+        version: file:../../../../opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.43

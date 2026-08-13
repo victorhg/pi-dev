@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   listProjectFiles,
   computeFunctionSpaghetti,
+  checkToolAvailability,
   runScan,
   type ScanDeps,
 } from "./scan.js";
@@ -91,6 +92,28 @@ describe("computeFunctionSpaghetti", () => {
     const results = computeFunctionSpaghetti(functions, 2);
     // a: 9 + 10 + 5 = 24
     expect(results[0].value).toBe(24);
+  });
+});
+
+describe("checkToolAvailability", () => {
+  it("reports all metrics with availability and install hints", () => {
+    const result = checkToolAvailability((bin) => (bin === "lizard" ? "/usr/bin/lizard" : null));
+    expect(result).toHaveLength(6);
+
+    const complexity = result.find((t) => t.metric === "complexity")!;
+    expect(complexity.available).toBe(true);
+    expect(complexity.command).toEqual(["lizard"]);
+
+    const secrets = result.find((t) => t.metric === "secrets")!;
+    expect(secrets.available).toBe(false);
+    expect(secrets.installHint).toContain("gitleaks");
+  });
+
+  it("resolves npx fallbacks when the runner is available", () => {
+    const result = checkToolAvailability((bin) => (bin === "npx" ? "/usr/bin/npx" : null));
+    const slop = result.find((t) => t.metric === "slop")!;
+    expect(slop.available).toBe(true);
+    expect(slop.command).toEqual(["npx", "--yes", "aislop"]);
   });
 });
 

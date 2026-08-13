@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   parseCsv,
   mapToolSeverity,
+  remediationFor,
   parseLizardCsv,
   parseJscpdJson,
   parseAislopJson,
@@ -50,6 +51,22 @@ describe("mapToolSeverity", () => {
   });
 });
 
+describe("remediationFor", () => {
+  it("returns metric-level defaults", () => {
+    expect(remediationFor("complexity")).toContain("Split");
+    expect(remediationFor("secrets")).toContain("rotate");
+  });
+
+  it("prefers rule-specific slop remediation", () => {
+    expect(remediationFor("slop", "ai-slop/narrative-comment")).toContain("self-explanatory");
+    expect(remediationFor("slop", "ai-slop/swallowed-exception")).toContain("rethrow");
+  });
+
+  it("falls back to metric default for unknown rules", () => {
+    expect(remediationFor("slop", "ai-slop/unknown-rule")).toBe(remediationFor("slop"));
+  });
+});
+
 describe("parseLizardCsv", () => {
   it("parses functions and flags those over threshold", () => {
     const result = parseLizardCsv(fixture("lizard.csv"), { complexityThreshold: 10 });
@@ -70,6 +87,12 @@ describe("parseLizardCsv", () => {
     const result = parseLizardCsv("", {});
     expect(result.findings).toEqual([]);
     expect(result.detail.functionsScanned).toBe(0);
+  });
+
+  it("attaches a remediation hint to findings", () => {
+    const result = parseLizardCsv(fixture("lizard.csv"), { complexityThreshold: 10 });
+    const finding = result.findings[0];
+    expect(finding.remediation).toContain("Split");
   });
 });
 

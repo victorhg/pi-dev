@@ -5,6 +5,8 @@ import {
   scoreEmoji,
   renderScorecardText,
   renderFindingsSummary,
+  renderFindingsList,
+  buildReportCard,
   renderMarkdownReport,
 } from "./report.js";
 import type { MetricReport, MetricScore, MetricId } from "./schema.js";
@@ -111,6 +113,49 @@ describe("renderFindingsSummary", () => {
     const report = makeReport();
     for (const id of METRIC_IDS) report.scores[id].findings = [];
     expect(renderFindingsSummary(report)).toBe("No findings.");
+  });
+});
+
+describe("renderFindingsList", () => {
+  it("includes severity, location, and remediation", () => {
+    const text = renderFindingsList([
+      {
+        metric: "security",
+        severity: "high",
+        message: "Dangerous eval",
+        file: "src/app.js",
+        line: 20,
+        remediation: "Replace eval with a safer alternative.",
+      },
+    ]);
+    expect(text).toContain("[high] Security: Dangerous eval (src/app.js:20)");
+    expect(text).toContain("→ fix: Replace eval with a safer alternative.");
+  });
+
+  it("omits the fix clause when there is no remediation", () => {
+    const text = renderFindingsList([{ metric: "security", severity: "low", message: "x" }]);
+    expect(text).not.toContain("→ fix:");
+  });
+});
+
+describe("buildReportCard", () => {
+  it("produces a lightweight card with metrics and sorted findings", () => {
+    const report = makeReport();
+    report.scores.security.findings = [
+      {
+        metric: "security",
+        severity: "critical",
+        message: "critical",
+        file: "a.ts",
+        line: 1,
+      },
+    ];
+    const card = buildReportCard(report);
+    expect(card.overall).toBe(85);
+    expect(card.metrics).toHaveLength(6);
+    expect(card.metrics[0]).toHaveProperty("id");
+    expect(card.metrics[0]).toHaveProperty("findingsCount");
+    expect(card.findings[0].severity).toBe("critical");
   });
 });
 
