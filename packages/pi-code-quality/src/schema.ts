@@ -57,8 +57,8 @@ export interface GateResult {
 export interface MetricReport {
   target: string;
   scores: Record<MetricId, MetricScore>;
-  /** Weighted aggregate, 0–100. */
-  overall: number;
+  /** Weighted aggregate, 0–100. Null when no metric produced a score. */
+  overall: number | null;
   createdAt: string;
   slug: string;
   gate?: GateResult;
