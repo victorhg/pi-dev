@@ -1,0 +1,40 @@
+[
+  {
+    "RuleID": "aws-access-token",
+    "Description": "AWS Access Token",
+    "Tags": ["key", "AWS"],
+    "StartLine": 5,
+    "EndLine": 5,
+    "StartColumn": 10,
+    "EndColumn": 30,
+    "Match": "REDACTED",
+    "Secret": "REDACTED",
+    "File": "config/aws.ts",
+    "Commit": "abc123def456",
+    "Entropy": 4.5,
+    "Author": "dev",
+    "Email": "dev@example.com",
+    "Date": "2026-01-01T00:00:00Z",
+    "Message": "add config",
+    "Fingerprint": "fp1"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Generic API Key",
+    "Tags": ["key"],
+    "StartLine": 3,
+    "EndLine": 3,
+    "StartColumn": 12,
+    "EndColumn": 44,
+    "Match": "REDACTED",
+    "Secret": "REDACTED",
+    "File": ".env.example",
+    "Commit": "def789abc012",
+    "Entropy": 3.9,
+    "Author": "dev",
+    "Email": "dev@example.com",
+    "Date": "2026-01-02T00:00:00Z",
+    "Message": "env example",
+    "Fingerprint": "fp2"
+  }
+]

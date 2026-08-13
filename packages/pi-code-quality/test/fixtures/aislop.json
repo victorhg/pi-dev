@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1",
+  "cliVersion": "1.0.0",
+  "version": "1.0.0",
+  "score": 76,
+  "label": "good",
+  "scoreable": true,
+  "coverage": { "scoreable": true },
+  "engines": { "ai-slop": { "issues": 2, "skipped": false, "elapsed": 0 } },
+  "engineDefinitions": {},
+  "diagnostics": [
+    {
+      "filePath": "src/comp.ts",
+      "engine": "ai-slop",
+      "rule": "ai-slop/narrative-comment",
+      "severity": "warning",
+      "message": "Narrative comment above self-explanatory code",
+      "help": "Remove the redundant comment",
+      "line": 4,
+      "column": 1,
+      "category": "ai-slop",
+      "fixable": true
+    },
+    {
+      "filePath": "src/comp.ts",
+      "engine": "ai-slop",
+      "rule": "ai-slop/swallowed-exception",
+      "severity": "error",
+      "message": "Exception swallowed without handling",
+      "help": "Handle or rethrow the exception",
+      "line": 12,
+      "column": 3,
+      "category": "ai-slop",
+      "fixable": false
+    }
+  ],
+  "findingAssessment": {},
+  "summary": { "errors": 1, "warnings": 1, "fixable": 1, "files": 20, "elapsed": "0.3s" }
+}

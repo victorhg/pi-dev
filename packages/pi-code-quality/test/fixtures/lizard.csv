@@ -1,0 +1,5 @@
+NLOC,CCN,token,PARAM,length,location,file,function,long_name,start,end
+15,12,80,3,18,"processOrder@1-15@src/order.py","src/order.py","processOrder","processOrder(...)","1","15"
+5,2,20,1,8,"helper@20-25@src/order.py","src/order.py","helper","helper(...)","20","25"
+40,35,300,5,42,"handleAll@1-40@src/legacy.js","src/legacy.js","handleAll","handleAll(...)","1","40"
+3,1,10,0,5,"tiny@10-13@src/util.ts","src/util.ts","tiny","tiny(...)","10","13"

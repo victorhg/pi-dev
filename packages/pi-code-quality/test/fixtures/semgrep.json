@@ -1,0 +1,28 @@
+{
+  "results": [
+    {
+      "check_id": "python.lang.security.audit.dangerous-subprocess-use.dangerous-subprocess-use",
+      "path": "src/run.py",
+      "start": { "line": 10, "col": 5, "offset": 100 },
+      "end": { "line": 10, "col": 25, "offset": 120 },
+      "extra": {
+        "message": "Detected subprocess function without shell=True",
+        "severity": "ERROR",
+        "metadata": { "cwe": ["CWE-78"], "category": "security" },
+        "lines": "subprocess.call(shell=True)"
+      }
+    },
+    {
+      "check_id": "javascript.lang.security.audit.detect-eval-with-expression.detect-eval-with-expression",
+      "path": "src/app.js",
+      "start": { "line": 20, "col": 1, "offset": 200 },
+      "end": { "line": 20, "col": 9, "offset": 208 },
+      "extra": {
+        "message": "eval detected",
+        "severity": "WARNING",
+        "metadata": { "category": "security" }
+      }
+    }
+  ],
+  "errors": []
+}
